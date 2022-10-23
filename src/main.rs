@@ -204,18 +204,21 @@ fn main() -> anyhow::Result<()> {
                     }
                 }
 
-                if let Err(err) =
-                    s.fn_handler("/api/ota", embedded_svc::http::Method::Post, move |req| {
+                if let Err(err) = s.fn_handler(
+                    "/api/ota",
+                    embedded_svc::http::Method::Post,
+                    move |mut req| {
                         // use embedded_svc::http::client::Connection
                         use embedded_svc::ota::{Ota, OtaUpdate};
                         use esp_idf_svc::http::client::{Configuration, EspHttpConnection};
                         use esp_idf_svc::ota::EspOta;
 
-                        let mut body: [u8; 1024 * 8];
+                        const BUF_MAX: usize = 8 * 1024;
+                        //let buffer_size: usize = 8 * 1024;
+
+                        let mut body: [u8; BUF_MAX] = [0; BUF_MAX];
                         let mut headers = Headers::<1>::new();
                         headers.set_cache_control("no-store");
-
-                        let mut resp = req.into_response(200, None, headers.as_slice())?;
 
                         let res = req.connection().read(&mut body);
                         info!("POST body size: {}", res.unwrap());
@@ -247,17 +250,12 @@ fn main() -> anyhow::Result<()> {
 
                         // let mut ota_update = ota.initiate_update().unwrap();
                         let mut firmware_update_ok = true;
-                        let mut bytes_read = 0;
+                        let mut bytes_read_total = 0;
 
                         loop {
-                            let bytes_to_take: usize = 8 * 1024;
+                            let n_bytes_read = client.read(&mut body)?;
 
-                            let body: Result<Vec<u8>, _> = ToStd::new(response.reader())
-                                .take(bytes_to_take.try_into().unwrap())
-                                .bytes()
-                                .collect();
-                            let body = body?;
-                            bytes_read += body.len();
+                            bytes_read_total += n_bytes_read;
 
                             info!(">>>>>>>>>>>>>> got new firmware batch {:?}", body.len());
                             if !body.is_empty() {
@@ -275,11 +273,11 @@ fn main() -> anyhow::Result<()> {
                                 info!("!!!!! ERROR firmware image with zero length !!!!");
                             }
 
-                            if body.len() < bytes_to_take {
+                            if body.len() > n_bytes_read {
                                 break;
                             }
 
-                            info!("Total firmware bytes read: {}", bytes_read);
+                            info!("Total firmware bytes read: {}", bytes_read_total);
                             sleep(Duration::from_millis(20));
                         }
 
@@ -295,21 +293,21 @@ fn main() -> anyhow::Result<()> {
                             // ota_update.abort().unwrap();
                         }
                         let _result = embedded_svc::httpd::Response::from("test").status;
-                        resp.send_str(
-                            r#"
+                        let confirmation_msg = r#"
                     <doctype html5>
                     <html>
                         <body>
                             Firmware updated. About to reboot now. Bye!
                         </body>
                     </html>
-                    "#,
-                        )?;
+                    "#;
 
+                        let mut response = req.into_response(200, None, headers.as_slice())?;
+                        response.write_all(confirmation_msg.as_bytes())?;
                         info!("Processing '/api/ota' request");
                         Ok(())
-                    })
-                {
+                    },
+                ) {
                     info!(
                         "mpsc loop: failed to register http handler /api/ota: {:?}",
                         err
