@@ -1,0 +1,42 @@
+[package]
+name = "esp32-s3-anemometer"
+version = "0.3.21"
+authors = ["Michael Zill <michael.zill@gmail.com>"]
+edition = "2021"
+resolver = "2"
+
+[profile.release]
+opt-level = "s"
+
+[profile.dev]
+debug = true # Symbols are nice and they don't increase the size on Flash
+opt-level = "z"
+
+[features]
+
+default = ["experimental", "native"]
+native = ["esp-idf-sys/native"]
+
+
+experimental = ["esp-idf-svc/experimental",  "embedded-svc/experimental"]
+
+[dependencies]
+esp-idf-hal = { git = "https://github.com/esp-rs/esp-idf-hal"}
+esp-idf-sys = { version = "0.31.9", features = ["binstart"] }
+esp-idf-svc = { path = "../esp-idf-svc", default-features = false, features = ["experimental","std","nightly"]}
+esp32s3 = "0.3"
+embedded-svc = {version = "0.23", git = "https://github.com/esp-rs/embedded-svc"}
+anyhow = "1.0"
+toml-cfg = "0.1"
+url = "2"
+log = { version = "0.4", features = ["max_level_debug",
+"release_max_level_debug"] }
+
+
+[build-dependencies]
+embuild = "0.29"
+anyhow = "1"
+
+[package.metadata.espflash]
+partition_table = "partitions.csv"
+

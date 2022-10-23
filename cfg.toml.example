@@ -1,0 +1,3 @@
+[esp32c3-anemometer]
+wifi_ssid = "No Access"
+wifi_psk = "4242"

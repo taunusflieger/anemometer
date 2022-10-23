@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html>
+            <head>
+                <link rel="preconnect" href="https://fonts.googleapis.com">
+                <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+                <link href="https://fonts.googleapis.com/css2?family=Roboto&display=swap" rel="stylesheet">
+                <style>
+                    * {
+                        font-family: 'Roboto', sans-serif;
+                        font-size: 16px;
+                    }
+                    h1 {
+                        font-size: 36px;
+                    }
+                </style>
+            </head>
+            <body>
+                <h1>Firmware OTA updates</h1>
+                <form method="post" action="/api/ota" enctype="application/x-www-form-urlencoded">
+                    Firmware to use
+                    <select name="firmware" disabled="">
+                        <option>Loading...</option>
+                    </select>
+                    <input type="submit" value="Use this firmware">
+                </form>
+                <script>
+                    const createOption = (text, value, disabled = false) => {
+                        const option = document.createElement("option");
+                        option.setAttribute("value", value);
+                        if (disabled) {
+                            option.setAttribute("disabled", "");
+                        }
+                        option.innerHTML = text;
+                        return option;
+                    };
+                    const getCurrentVersion = async () => {
+                        const d = await fetch("/api/version"); 
+                        return d.text();
+                    };
+                    const getAvailableReleases = async () => {
+                        const r = await fetch("http://192.168.100.86/bin/releases.json");
+                        return r.json();
+                    };
+                    const main = async () => {
+                        const releases = await getAvailableReleases();
+                        const version = await getCurrentVersion();
+                        const $firmwareSelector = document.querySelector("select[name=firmware]");
+                        // clean up
+                        $firmwareSelector.children[0].remove();
+                        $firmwareSelector.removeAttribute("disabled");
+                        releases.forEach(({ tag_name: release, assets }) => {
+                            const asset = assets.find(a => a.name.match(/bin$/ig));
+                            const isCurrent = release === version;
+                            $firmwareSelector.add(createOption(`${release}${isCurrent ? ' [CURRENT]' : ''}`, asset.browser_download_url, isCurrent));
+                        });
+                    };
+                    main();
+                </script>
+            </body>
+</html>
