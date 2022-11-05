@@ -15,10 +15,11 @@ use std::{
 };
 
 use embedded_svc::http::server::{Connection, HandlerResult, Request};
+use embedded_svc::io::Write;
+use embedded_svc::ota::{Ota, OtaUpdate};
 use embedded_svc::utils::http::Headers;
 use embedded_svc::wifi::{self, AuthMethod, ClientConfiguration};
-
-use embedded_svc::io::Write;
+use esp_idf_hal::delay;
 use esp_idf_hal::peripherals::Peripherals;
 use esp_idf_svc::eventloop::EspSystemEventLoop;
 use esp_idf_svc::nvs::EspDefaultNvsPartition;
@@ -26,6 +27,7 @@ use esp_idf_svc::{
     netif::IpEvent, nvs::EspDefaultNvs, wifi::EspWifi, wifi::WifiEvent, wifi::WifiWait,
 };
 use esp_idf_sys as _;
+use esp_idf_sys::*;
 use std::cell::{RefCell, RefMut};
 use std::rc::Rc;
 use std::sync::mpsc;
@@ -119,7 +121,12 @@ fn main() -> anyhow::Result<()> {
 
     wifi.start()?;
 
+    // disable power save
+    esp!(unsafe { esp_wifi_set_ps(wifi_ps_type_t_WIFI_PS_NONE) })?;
+
     wait.wait(|| wifi.is_started().unwrap());
+
+    sleep(Duration::from_millis(2000));
 
     info!("Wifi started");
     wifi.connect()?;
@@ -159,6 +166,10 @@ fn main() -> anyhow::Result<()> {
             }
             Ok(SysLoopMsg::IpAddressAsquired) => {
                 info!("mpsc loop: IpAddressAsquired received");
+
+                // test remove
+                sleep(Duration::from_millis(1000));
+
                 let server_config = Configuration::default();
                 let mut s = httpd.create(&server_config);
 
@@ -213,9 +224,11 @@ fn main() -> anyhow::Result<()> {
                         use esp_idf_svc::http::client::{Configuration, EspHttpConnection};
                         use esp_idf_svc::ota::EspOta;
 
-                        const BUF_MAX: usize = 8 * 1024;
-                        //let buffer_size: usize = 8 * 1024;
+                        const BUF_MAX: usize = 2 * 1024;
+                        const MAX_RETRY: u8 = 3;
+                        info!("Start processing /api/ota");
 
+                        let mut content_length: usize = 0;
                         let mut body: [u8; BUF_MAX] = [0; BUF_MAX];
                         let mut headers = Headers::<1>::new();
                         headers.set_cache_control("no-store");
@@ -223,43 +236,80 @@ fn main() -> anyhow::Result<()> {
                         let res = req.connection().read(&mut body);
                         info!("POST body size: {}", res.unwrap());
 
+                        // TODO: check error handling!
                         let firmware = url::form_urlencoded::parse(&body)
                             .filter(|p| p.0 == "firmware")
                             .map(|p| p.1)
                             .next()
                             .ok_or_else(|| anyhow::anyhow!("No parameter firmware"));
 
-                        info!("Will use firmware from: {:?}", firmware);
+                        let firmware = firmware.unwrap();
+                        info!("Will use firmware from: {}", firmware);
 
                         let mut ota = EspOta::new().unwrap();
 
+                        let mut ota_update = ota.initiate_update().unwrap();
+                        info!("EspOta created");
+                        /*                    let mut client = EspHttpConnection::new(&Configuration {
+                                                    crt_bundle_attach: Some(esp_idf_sys::esp_crt_bundle_attach),
+                                                    buffer_size_tx: Some(BUF_MAX),
+                                                    ..Default::default()
+                                                })
+                                                .expect("creation of EspHttpConnection should have worked");
+                        */
+
+                        let mut firmware_update_ok = false;
+
+                        let mut retry_cnt = 0;
+
                         let mut client = EspHttpConnection::new(&Configuration {
-                            crt_bundle_attach: Some(esp_idf_sys::esp_crt_bundle_attach),
-                            buffer_size_tx: Some(1024),
+                            buffer_size: Some(BUF_MAX),
                             ..Default::default()
-                        })?;
+                        })
+                        .expect("creation of EspHttpConnection should have worked");
+
+                        info!("EspHttpConnection created");
 
                         let mut resp = client.initiate_request(
                             embedded_svc::http::Method::Get,
-                            &firmware.unwrap(),
-                            &[("Content-Length", "0")],
+                            "http://192.168.100.86/bin/firmware-0.3.43.bin",
+                            &[],
                         );
+
+                        info!("after client.initiate_request()");
+
                         client.initiate_response()?;
+
+                        if let Some(len) = client.header("Content-Length") {
+                            content_length = len.parse().unwrap();
+                        } else {
+                            info!("reading content length for firmware update hhtp request failed");
+                        }
+
+                        info!("Content-length: {:?}", content_length);
 
                         info!(">>>>>>>>>>>>>>>> initiating OTA update");
 
-                        // let mut ota_update = ota.initiate_update().unwrap();
-                        let mut firmware_update_ok = true;
                         let mut bytes_read_total = 0;
 
                         loop {
-                            let n_bytes_read = client.read(&mut body)?;
-
+                            // data read loop
+                            esp_idf_hal::delay::FreeRtos::delay_ms(10);
+                            // sleep(Duration::from_millis(50));
+                            let n_bytes_read = client.read(&mut body).unwrap();
+                            /*
+                                                        let batch_read_result = match client.read(&mut body) {
+                                                            Ok(n_bytes_read) => n_bytes_read,
+                                                            Err(err) => {
+                                                                info!(">>>>>>>>> ERROR reading firmware batch {:?}", err)
+                                                            }
+                                                        };
+                            */
                             bytes_read_total += n_bytes_read;
 
-                            info!(">>>>>>>>>>>>>> got new firmware batch {:?}", body.len());
+                            //info!(">>>>>>>>>>>>>> got new firmware batch {:?}", body.len());
                             if !body.is_empty() {
-                                /*
+                                //sleep(Duration::from_millis(50));
                                 match ota_update.write(&body) {
                                     Ok(_) => {}
                                     Err(err) => {
@@ -268,31 +318,33 @@ fn main() -> anyhow::Result<()> {
                                         break;
                                     }
                                 }
-                                */
                             } else {
                                 info!("!!!!! ERROR firmware image with zero length !!!!");
                             }
 
                             if body.len() > n_bytes_read {
+                                // info!(">>>>>>>>>>>>>>> Last batch read");
                                 break;
                             }
 
-                            info!("Total firmware bytes read: {}", bytes_read_total);
-                            sleep(Duration::from_millis(20));
+                            //info!("Total firmware bytes read: {}", bytes_read_total);
                         }
 
+                        if bytes_read_total == content_length {
+                            firmware_update_ok = true;
+                        }
                         info!(
                             ">>>>>>>>>>>>>>>> firmware update ok says: {:?}",
                             firmware_update_ok
                         );
 
                         if firmware_update_ok {
-                            //  ota_update.complete().unwrap();
+                            ota_update.complete().unwrap();
                             info!(">>>>>>>>>>>>>>>> completed firmware update");
                         } else {
-                            // ota_update.abort().unwrap();
+                            ota_update.abort().unwrap();
                         }
-                        let _result = embedded_svc::httpd::Response::from("test").status;
+                        //   let _result = embedded_svc::httpd::Response::from("test").status;
                         let confirmation_msg = r#"
                     <doctype html5>
                     <html>
@@ -354,7 +406,8 @@ fn main() -> anyhow::Result<()> {
                 } // the other error value is Empty which is okay and we ignore
             }
         }
-        sleep(Duration::from_millis(100));
+
+        esp_idf_hal::delay::FreeRtos::delay_ms(100);
     }
 }
 

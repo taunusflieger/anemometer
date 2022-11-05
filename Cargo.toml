@@ -1,6 +1,6 @@
 [package]
-name = "esp32-s3-anemometer"
-version = "0.3.21"
+name = "anemometer"
+version = "0.3.50"
 authors = ["Michael Zill <michael.zill@gmail.com>"]
 edition = "2021"
 resolver = "2"
@@ -22,10 +22,11 @@ experimental = ["esp-idf-svc/experimental",  "embedded-svc/experimental"]
 
 [dependencies]
 esp-idf-hal = { git = "https://github.com/esp-rs/esp-idf-hal"}
-esp-idf-sys = { version = "0.31.9", features = ["binstart"] }
+esp-idf-sys = { version = "=0.31.10", features = ["binstart"] }
 esp-idf-svc = { git = "https://github.com/esp-rs/esp-idf-svc", default-features = false, features = ["experimental","std","nightly"]}
 esp32s3 = "0.3"
-embedded-svc = {version = "0.23", git = "https://github.com/esp-rs/embedded-svc"}
+embedded-svc = {git = "https://github.com/esp-rs/embedded-svc"}
+embedded-io = "=0.3.0"
 anyhow = "1.0"
 toml-cfg = "0.1"
 url = "2"
@@ -39,4 +40,7 @@ anyhow = "1"
 
 [package.metadata.espflash]
 partition_table = "partitions.csv"
+
+#[patch.crates-io]
+#esp-idf-sys = "0.31.10"
 
