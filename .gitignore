@@ -2,6 +2,7 @@
 .embuild
 bin
 target
+rust-toolchain.toml
 cfg.toml
 __pycache__
 .DS_Store

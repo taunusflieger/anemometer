@@ -4,6 +4,11 @@ version = "0.3.43"
 authors = ["Michael Zill <michael.zill@gmail.com>"]
 edition = "2021"
 resolver = "2"
+categories = ["embedded", "hardware-support"]
+keywords = ["esp-idf", "esp32"]
+repository = "https://github.com/taunusflieger/anemometer"
+license = "MIT OR Apache-2.0"
+readme = "README.md"
 
 [profile.release]
 opt-level = "s"
@@ -24,7 +29,7 @@ experimental = ["esp-idf-svc/experimental",  "embedded-svc/experimental"]
 esp-idf-hal = { git = "https://github.com/esp-rs/esp-idf-hal"}
 esp-idf-sys = { version = "=0.31.10", features = ["binstart"] }
 esp-idf-svc = { git = "https://github.com/esp-rs/esp-idf-svc", default-features = false, features = ["experimental","std","nightly"]}
-esp32s3 = "0.3"
+#esp32s3 = "0.3"
 embedded-svc = {git = "https://github.com/esp-rs/embedded-svc"}
 embedded-io = "=0.3.0"
 anyhow = "1.0"
