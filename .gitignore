@@ -1,7 +1,7 @@
 /.vscode
 .embuild
+bin
 target
-bin/
 cfg.toml
 __pycache__
 .DS_Store

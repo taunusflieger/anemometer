@@ -55,5 +55,5 @@ CONFIG_HTTPD_PURGE_BUF_LEN=32
 # CONFIG_HTTPD_WS_SUPPORT is not set
 # end of HTTP Server
 
-#
-
+# Erase the OTA partition 
+CONFIG_BOOTLOADER_OTA_DATA_ERASE=y

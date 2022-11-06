@@ -1,31 +1,17 @@
-#![cfg_attr(debug_assertions, allow(dead_code, unused_imports))]
+#![cfg_attr(debug_assertions, allow(dead_code))]
 
 use core::str;
-use embedded_svc::io::adapters::ToStd;
-use embedded_svc::timer::*;
 use esp_idf_svc::http::server::{Configuration, EspHttpServer};
-use esp_idf_svc::timer::*;
 use log::info;
-use std::io::Read;
-use std::{
-    sync::atomic::{AtomicU16, AtomicU8, Ordering},
-    sync::{Arc, Condvar, Mutex},
-    thread::sleep,
-    time::Duration,
-};
+use std::{thread::sleep, time::Duration};
 
-use embedded_svc::http::server::{Connection, HandlerResult, Request};
 use embedded_svc::io::Write;
-use embedded_svc::ota::{Ota, OtaUpdate};
 use embedded_svc::utils::http::Headers;
 use embedded_svc::wifi::{self, AuthMethod, ClientConfiguration};
-use esp_idf_hal::delay;
 use esp_idf_hal::peripherals::Peripherals;
 use esp_idf_svc::eventloop::EspSystemEventLoop;
 use esp_idf_svc::nvs::EspDefaultNvsPartition;
-use esp_idf_svc::{
-    netif::IpEvent, nvs::EspDefaultNvs, wifi::EspWifi, wifi::WifiEvent, wifi::WifiWait,
-};
+use esp_idf_svc::{netif::IpEvent, wifi::EspWifi, wifi::WifiEvent, wifi::WifiWait};
 use esp_idf_sys as _;
 use esp_idf_sys::*;
 use std::cell::{RefCell, RefMut};
@@ -113,7 +99,7 @@ fn main() -> anyhow::Result<()> {
     wifi.set_configuration(&wifi::Configuration::Client(ClientConfiguration {
         ssid: CONFIG.wifi_ssid.into(),
         password: CONFIG.wifi_psk.into(),
-        auth_method: auth_method,
+        auth_method,
         ..Default::default()
     }))?;
 
@@ -131,7 +117,6 @@ fn main() -> anyhow::Result<()> {
     info!("Wifi started");
     wifi.connect()?;
 
-    let tx = tx.clone();
     let tx1 = tx.clone();
     let _wifi_event_sub = sysloop.subscribe(move |event: &WifiEvent| match event {
         WifiEvent::StaConnected => {
@@ -183,10 +168,9 @@ fn main() -> anyhow::Result<()> {
                     Ok(())
                 }) {
                     info!(
-                        "mpsc loop: failed to register http handler /temperature: {:?}",
+                        "mpsc loop: failed to register http handler /temperature: {:?} - restarting device",
                         err
                     );
-                    info!("mpsc loop: Restarting...");
                     unsafe {
                         esp_idf_sys::esp_restart();
                     }
@@ -206,10 +190,9 @@ fn main() -> anyhow::Result<()> {
                     },
                 ) {
                     info!(
-                        "mpsc loop: failed to register http handler /api/version: {:?}",
+                        "mpsc loop: failed to register http handler /api/version: {:?} - restarting device",
                         err
                     );
-                    info!("mpsc loop: Restarting...");
                     unsafe {
                         esp_idf_sys::esp_restart();
                     }
@@ -219,13 +202,13 @@ fn main() -> anyhow::Result<()> {
                     "/api/ota",
                     embedded_svc::http::Method::Post,
                     move |mut req| {
-                        // use embedded_svc::http::client::Connection
-                        use embedded_svc::ota::{Ota, OtaUpdate};
                         use esp_idf_svc::http::client::{Configuration, EspHttpConnection};
                         use esp_idf_svc::ota::EspOta;
 
                         const BUF_MAX: usize = 2 * 1024;
                         const MAX_RETRY: u8 = 3;
+                        let mut firmware_update_ok = false;
+
                         info!("Start processing /api/ota");
 
                         let mut content_length: usize = 0;
@@ -237,30 +220,20 @@ fn main() -> anyhow::Result<()> {
                         info!("POST body size: {}", res.unwrap());
 
                         // TODO: check error handling!
-                        let firmware = url::form_urlencoded::parse(&body)
+                        let firmware_url = url::form_urlencoded::parse(&body)
                             .filter(|p| p.0 == "firmware")
                             .map(|p| p.1)
                             .next()
                             .ok_or_else(|| anyhow::anyhow!("No parameter firmware"));
 
-                        let firmware = firmware.unwrap();
-                        info!("Will use firmware from: {}", firmware);
+                        let firmware_url = firmware_url.unwrap().to_string();
+                        let firmware_url = firmware_url.trim_matches(char::from(0));
+                        info!("Will use firmware from: {}", firmware_url);
 
                         let mut ota = EspOta::new().unwrap();
 
-                        let mut ota_update = ota.initiate_update().unwrap();
+                        let ota_update = ota.initiate_update().unwrap();
                         info!("EspOta created");
-                        /*                    let mut client = EspHttpConnection::new(&Configuration {
-                                                    crt_bundle_attach: Some(esp_idf_sys::esp_crt_bundle_attach),
-                                                    buffer_size_tx: Some(BUF_MAX),
-                                                    ..Default::default()
-                                                })
-                                                .expect("creation of EspHttpConnection should have worked");
-                        */
-
-                        let mut firmware_update_ok = false;
-
-                        let mut retry_cnt = 0;
 
                         let mut client = EspHttpConnection::new(&Configuration {
                             buffer_size: Some(BUF_MAX),
@@ -269,10 +242,9 @@ fn main() -> anyhow::Result<()> {
                         .expect("creation of EspHttpConnection should have worked");
 
                         info!("EspHttpConnection created");
-
-                        let mut resp = client.initiate_request(
+                        let _resp = client.initiate_request(
                             embedded_svc::http::Method::Get,
-                            "http://192.168.100.86/bin/firmware-0.3.43.bin",
+                            firmware_url,
                             &[],
                         );
 
@@ -283,7 +255,7 @@ fn main() -> anyhow::Result<()> {
                         if let Some(len) = client.header("Content-Length") {
                             content_length = len.parse().unwrap();
                         } else {
-                            info!("reading content length for firmware update hhtp request failed");
+                            info!("reading content length for firmware update http request failed");
                         }
 
                         info!("Content-length: {:?}", content_length);
@@ -293,78 +265,65 @@ fn main() -> anyhow::Result<()> {
                         let mut bytes_read_total = 0;
 
                         loop {
-                            // data read loop
                             esp_idf_hal::delay::FreeRtos::delay_ms(10);
-                            // sleep(Duration::from_millis(50));
-                            let n_bytes_read = client.read(&mut body).unwrap();
-                            /*
-                                                        let batch_read_result = match client.read(&mut body) {
-                                                            Ok(n_bytes_read) => n_bytes_read,
-                                                            Err(err) => {
-                                                                info!(">>>>>>>>> ERROR reading firmware batch {:?}", err)
-                                                            }
-                                                        };
-                            */
+                            let n_bytes_read = match client.read(&mut body) {
+                                Ok(n) => n,
+                                Err(err) => {
+                                    info!("ERROR reading firmware batch {:?}", err);
+                                    break;
+                                }
+                            };
                             bytes_read_total += n_bytes_read;
 
-                            //info!(">>>>>>>>>>>>>> got new firmware batch {:?}", body.len());
                             if !body.is_empty() {
-                                //sleep(Duration::from_millis(50));
                                 match ota_update.write(&body) {
                                     Ok(_) => {}
                                     Err(err) => {
-                                        info!("failed to write update with: {:?}", err);
-                                        firmware_update_ok = false;
+                                        info!("ERROR failed to write update with: {:?}", err);
                                         break;
                                     }
                                 }
                             } else {
-                                info!("!!!!! ERROR firmware image with zero length !!!!");
-                            }
-
-                            if body.len() > n_bytes_read {
-                                // info!(">>>>>>>>>>>>>>> Last batch read");
+                                info!("ERROR firmware image with zero length");
                                 break;
                             }
 
-                            //info!("Total firmware bytes read: {}", bytes_read_total);
+                            if body.len() > n_bytes_read {
+                                break;
+                            }
                         }
 
                         if bytes_read_total == content_length {
                             firmware_update_ok = true;
                         }
-                        info!(
-                            ">>>>>>>>>>>>>>>> firmware update ok says: {:?}",
-                            firmware_update_ok
-                        );
 
-                        if firmware_update_ok {
+                        let confirmation_msg = if firmware_update_ok {
                             ota_update.complete().unwrap();
-                            info!(">>>>>>>>>>>>>>>> completed firmware update");
+                            info!("completed firmware update");
+
+                            templated("Successfully completed firmware update")
                         } else {
                             ota_update.abort().unwrap();
-                        }
-                        //   let _result = embedded_svc::httpd::Response::from("test").status;
-                        let confirmation_msg = r#"
-                    <doctype html5>
-                    <html>
-                        <body>
-                            Firmware updated. About to reboot now. Bye!
-                        </body>
-                    </html>
-                    "#;
+                            info!("ERROR firmware update failed");
+                            templated("Firmare update failed")
+                        };
 
                         let mut response = req.into_response(200, None, headers.as_slice())?;
                         response.write_all(confirmation_msg.as_bytes())?;
-                        info!("Processing '/api/ota' request");
+
+                        esp_idf_hal::delay::FreeRtos::delay_ms(1000);
+                        info!("restarting device after firmware update");
+                        unsafe {
+                            esp_idf_sys::esp_restart();
+                        }
+                        info!("failed to restart device");
                         Ok(())
                     },
                 ) {
                     info!(
-                        "mpsc loop: failed to register http handler /api/ota: {:?}",
+                        "mpsc loop: failed to register http handler /api/ota: {:?} - restarting device",
                         err
                     );
-                    info!("mpsc loop: Restarting...");
                     unsafe {
                         esp_idf_sys::esp_restart();
                     }
@@ -386,10 +345,9 @@ fn main() -> anyhow::Result<()> {
                     },
                 ) {
                     info!(
-                        "mpsc loop: failed to register http handler /temperature: {:?}",
+                        "mpsc loop: failed to register http handler /temperature: {:?} - restarting device",
                         err
                     );
-                    info!("mpsc loop: Restarting...");
                     unsafe {
                         esp_idf_sys::esp_restart();
                     }
@@ -397,9 +355,7 @@ fn main() -> anyhow::Result<()> {
             }
             Err(err) => {
                 if err == mpsc::TryRecvError::Disconnected {
-                    //reboot
-                    info!("mpsc loop: error recv {:?}", err);
-                    info!("mpsc loop: Restarting...");
+                    info!("mpsc loop: error recv {:?} - restarting device", err);
                     unsafe {
                         esp_idf_sys::esp_restart();
                     }

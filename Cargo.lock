@@ -22,7 +22,7 @@ dependencies = [
 
 [[package]]
 name = "anemometer"
-version = "0.3.50"
+version = "0.3.43"
 dependencies = [
  "anyhow",
  "embedded-io",
