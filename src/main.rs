@@ -5,13 +5,18 @@ use esp_idf_svc::http::server::{Configuration, EspHttpServer};
 use log::info;
 use std::{thread::sleep, time::Duration};
 
-use embedded_svc::io::Write;
-use embedded_svc::utils::http::Headers;
-use embedded_svc::wifi::{self, AuthMethod, ClientConfiguration};
+use embedded_svc::{
+    io::Write,
+    utils::http::Headers,
+    wifi::{self, AuthMethod, ClientConfiguration},
+};
 use esp_idf_hal::peripherals::Peripherals;
-use esp_idf_svc::eventloop::EspSystemEventLoop;
-use esp_idf_svc::nvs::EspDefaultNvsPartition;
-use esp_idf_svc::{netif::IpEvent, wifi::EspWifi, wifi::WifiEvent, wifi::WifiWait};
+use esp_idf_svc::{
+    eventloop::EspSystemEventLoop,
+    netif::IpEvent,
+    nvs::EspDefaultNvsPartition,
+    wifi::{EspWifi, WifiEvent, WifiWait},
+};
 use esp_idf_sys as _;
 use esp_idf_sys::*;
 use std::cell::{RefCell, RefMut};
