@@ -1,4 +1,5 @@
 # ESP32-C3 / S3 Espressif IDF OTA Experiment
+[![CI](https://github.com/taunusflieger/anemometer/actions/workflows/ci.yml/badge.svg)](https://github.com/taunusflieger/anemometer/actions/workflows/ci.yml)
 
 ## About
 
