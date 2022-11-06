@@ -115,9 +115,6 @@ fn main() -> anyhow::Result<()> {
             Ok(SysLoopMsg::IpAddressAsquired) => {
                 info!("mpsc loop: IpAddressAsquired received");
 
-                // test remove
-                sleep(Duration::from_millis(1000));
-
                 let server_config = Configuration::default();
                 let mut s = httpd.create(&server_config);
 
