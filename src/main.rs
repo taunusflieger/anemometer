@@ -41,6 +41,7 @@ enum SysLoopMsg {
 }
 
 enum NeopixelColor {
+    Blue = 0xff0000,
     Red = 0x00ff00,
     Green = 0x0000ff,
 }
@@ -49,14 +50,17 @@ fn main() -> anyhow::Result<()> {
     esp_idf_sys::link_patches();
     esp_idf_svc::log::EspLogger::initialize_default();
 
-    // required for neopixel
+    // Required for neopixel
     let peripherals = Peripherals::take().unwrap();
     let mut led = peripherals.pins.gpio18;
-    let mut led_pwr = peripherals.pins.gpio17;
-    let mut led_pwr = PinDriver::output(led_pwr)?;
-    led_pwr.set_high()?;
     let mut channel = peripherals.rmt.channel0;
     let config = TransmitConfig::new().clock_divider(1);
+
+    // Required for UM TinyS3 board. The WS2812 VDD pin is connected
+    // to PIN 17, so it needs to be powered through the PIN
+    let led_pwr = peripherals.pins.gpio17;
+    let mut led_pwr = PinDriver::output(led_pwr)?;
+    led_pwr.set_high()?;
 
     neopixel(NeopixelColor::Red, &mut channel, &config, &mut led)?;
 
