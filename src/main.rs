@@ -2,10 +2,9 @@ use core::str;
 use embassy_sync::blocking_mutex::Mutex;
 use embedded_svc::wifi::{self, AuthMethod, ClientConfiguration};
 use esp_idf_hal::gpio::*;
-use esp_idf_hal::peripheral::*;
 use esp_idf_hal::peripherals::Peripherals;
 use esp_idf_hal::rmt::config::TransmitConfig;
-use esp_idf_hal::rmt::{FixedLengthSignal, PinState, Pulse, RmtChannel, TxRmtDriver};
+use esp_idf_hal::rmt::{FixedLengthSignal, PinState, Pulse, TxRmtDriver};
 use esp_idf_hal::task::embassy_sync::EspRawMutex;
 use esp_idf_svc::http::server::Configuration;
 use esp_idf_svc::{
@@ -49,10 +48,13 @@ enum NeopixelColor {
     Green = 0x0000ff,
 }
 
-//static MY_GPIO: Mutex<RefCell<Option<esp_idf_hal::gpio::Gpio18>>> = Mutex::new(RefCell::new(None));
-type LedPin = esp_idf_hal::gpio::PinDriver<'static, Gpio18, Output>;
+struct NeoPixelContext {
+    channel: RefCell<esp_idf_hal::rmt::CHANNEL0>,
+    tx_config: esp_idf_hal::rmt::RmtTransmitConfig,
+    pin: RefCell<esp_idf_hal::gpio::Gpio18>,
+}
 
-static NEOPIXEL_PIN: static_cell::StaticCell<Arc<Mutex<EspRawMutex, RefCell<LedPin>>>> =
+static NEOPIXEL_CTX: static_cell::StaticCell<Arc<Mutex<EspRawMutex, RefCell<NeoPixelContext>>>> =
     static_cell::StaticCell::new();
 
 fn main() -> anyhow::Result<()> {
@@ -62,28 +64,23 @@ fn main() -> anyhow::Result<()> {
     // Required for neopixel
     let peripherals = Peripherals::take().unwrap();
 
-    /*
-        let a = MY_GPIO
-            .lock()
-            .unwrap()
-            .borrow_mut()
-            .replace(test { a: tc, b: 34 });
-    }); */
-
-    let mut channel = peripherals.rmt.channel0;
-    let config = TransmitConfig::new().clock_divider(1);
-
     // Required for UM TinyS3 board. The WS2812 VDD pin is connected
     // to PIN 17, so it needs to be powered through the PIN
     let led_pwr = peripherals.pins.gpio17;
     let mut led_pwr = PinDriver::output(led_pwr)?;
     led_pwr.set_high()?;
 
-    let led_pin_handle = NEOPIXEL_PIN.init(Arc::new(Mutex::new(RefCell::new(
-        PinDriver::output(peripherals.pins.gpio18).unwrap(),
-    ))));
+    let nexpixel_ctx_handle =
+        NEOPIXEL_CTX.init(Arc::new(Mutex::new(RefCell::new(NeoPixelContext {
+            pin: RefCell::new(peripherals.pins.gpio18),
+            channel: RefCell::new(peripherals.rmt.channel0),
+            tx_config: TransmitConfig::new().clock_divider(1),
+        }))));
+    let neopixel_ctx1 = nexpixel_ctx_handle.clone();
+    let neopixel_ctx2 = nexpixel_ctx_handle.clone();
+    let neopixel_ctx3 = nexpixel_ctx_handle.clone();
 
-    //neopixel2(NeopixelColor::Red, &mut channel, &config)?;
+    neopixel(NeopixelColor::Red, neopixel_ctx1)?;
 
     let httpd = lazy_http_server::lazy_init_http_server::LazyInitHttpServer::new();
     let (tx, rx) = mpsc::channel::<SysLoopMsg>();
@@ -135,6 +132,9 @@ fn main() -> anyhow::Result<()> {
         }
         WifiEvent::StaDisconnected => {
             info!("******* Received STA Disconnected event");
+            if let Err(err) = neopixel(NeopixelColor::Red, neopixel_ctx2.clone()) {
+                info!("Error using neopixel {:?}", err);
+            }
             tx.send(SysLoopMsg::WifiDisconnect)
                 .expect("wifi event channel closed");
             //    sleep(Duration::from_millis(10));
@@ -148,6 +148,9 @@ fn main() -> anyhow::Result<()> {
     let _ip_event_sub = sysloop.subscribe(move |event: &IpEvent| match event {
         IpEvent::DhcpIpAssigned(_assignment) => {
             info!("************ Received IPEvent address assigned");
+            if let Err(err) = neopixel(NeopixelColor::Green, neopixel_ctx3.clone()) {
+                info!("Error using neopixel {:?}", err);
+            }
             tx1.send(SysLoopMsg::IpAddressAsquired)
                 .expect("IP event channel closed");
         }
@@ -159,13 +162,11 @@ fn main() -> anyhow::Result<()> {
             Ok(SysLoopMsg::WifiDisconnect) => {
                 info!("mpsc loop: WifiDisconnect received");
 
-                //neopixel2(NeopixelColor::Red, &mut channel, &config)?;
                 httpd.clear();
             }
             Ok(SysLoopMsg::IpAddressAsquired) => {
                 info!("mpsc loop: IpAddressAsquired received");
 
-                //neopixel2(NeopixelColor::Green, &mut channel, &config)?;
                 let server_config = Configuration::default();
                 let mut s = httpd.create(&server_config);
 
@@ -243,53 +244,31 @@ fn ns(nanos: u64) -> Duration {
 
 fn neopixel(
     color: NeopixelColor,
-    channel: impl Peripheral<P = impl RmtChannel>,
-    config: &TransmitConfig,
-    led: impl Peripheral<P = impl OutputPin>,
+    ctx: Arc<Mutex<EspRawMutex, RefCell<NeoPixelContext>>>,
 ) -> anyhow::Result<()> {
-    let mut tx = TxRmtDriver::new(channel, led, &config)?;
+    ctx.lock(|ctx| {
+        let ctx = ctx.borrow_mut();
 
-    let ticks_hz = tx.counter_clock()?;
-    let t0h = Pulse::new_with_duration(ticks_hz, PinState::High, &ns(350))?;
-    let t0l = Pulse::new_with_duration(ticks_hz, PinState::Low, &ns(800))?;
-    let t1h = Pulse::new_with_duration(ticks_hz, PinState::High, &ns(700))?;
-    let t1l = Pulse::new_with_duration(ticks_hz, PinState::Low, &ns(600))?;
+        let mut tx = TxRmtDriver::new(
+            ctx.channel.borrow_mut(),
+            ctx.pin.borrow_mut(),
+            &ctx.tx_config,
+        )
+        .unwrap();
 
-    let mut signal = FixedLengthSignal::<24>::new();
-    for i in 0..24 {
-        let bit = 2_u32.pow(i) & color as u32 != 0;
-        let (high_pulse, low_pulse) = if bit { (t1h, t1l) } else { (t0h, t0l) };
-        signal.set(i as usize, &(high_pulse, low_pulse))?;
-    }
-    tx.start_blocking(&signal)?;
-
-    Ok(())
-}
-/*
-fn neopixel2(
-    color: NeopixelColor,
-    channel: impl Peripheral<P = impl RmtChannel>,
-    config: &TransmitConfig,
-    led_pin: Arc<Mutex<EspRawMutex, RefCell<LedPin>>>,
-) -> anyhow::Result<()> {
-    led_pin.lock(|led_pin| {
-        let mut led = led_pin.borrow_mut();
-        let mut tx = TxRmtDriver::new(channel, led, &config)?;
-
-        let ticks_hz = tx.counter_clock()?;
-        let t0h = Pulse::new_with_duration(ticks_hz, PinState::High, &ns(350))?;
-        let t0l = Pulse::new_with_duration(ticks_hz, PinState::Low, &ns(800))?;
-        let t1h = Pulse::new_with_duration(ticks_hz, PinState::High, &ns(700))?;
-        let t1l = Pulse::new_with_duration(ticks_hz, PinState::Low, &ns(600))?;
+        let ticks_hz = tx.counter_clock().unwrap();
+        let t0h = Pulse::new_with_duration(ticks_hz, PinState::High, &ns(350)).unwrap();
+        let t0l = Pulse::new_with_duration(ticks_hz, PinState::Low, &ns(800)).unwrap();
+        let t1h = Pulse::new_with_duration(ticks_hz, PinState::High, &ns(700)).unwrap();
+        let t1l = Pulse::new_with_duration(ticks_hz, PinState::Low, &ns(600)).unwrap();
 
         let mut signal = FixedLengthSignal::<24>::new();
         for i in 0..24 {
             let bit = 2_u32.pow(i) & color as u32 != 0;
             let (high_pulse, low_pulse) = if bit { (t1h, t1l) } else { (t0h, t0l) };
-            signal.set(i as usize, &(high_pulse, low_pulse))?;
+            signal.set(i as usize, &(high_pulse, low_pulse)).unwrap();
         }
-        tx.start_blocking(&signal)?;
+        tx.start_blocking(&signal).unwrap();
     });
     Ok(())
 }
-*/
