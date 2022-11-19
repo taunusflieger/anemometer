@@ -51,7 +51,9 @@ enum NeopixelColor {
 struct NeoPixelContext {
     channel: RefCell<esp_idf_hal::rmt::CHANNEL0>,
     tx_config: esp_idf_hal::rmt::RmtTransmitConfig,
-    pin: RefCell<esp_idf_hal::gpio::Gpio18>,
+    // For UM TinyS3 board Gpio18
+    // For Adafruit ESP32-S3 Gpio33
+    pin: RefCell<esp_idf_hal::gpio::Gpio33>,
 }
 
 static NEOPIXEL_CTX: static_cell::StaticCell<Arc<Mutex<EspRawMutex, RefCell<NeoPixelContext>>>> =
@@ -66,21 +68,24 @@ fn main() -> anyhow::Result<()> {
 
     // Required for UM TinyS3 board. The WS2812 VDD pin is connected
     // to PIN 17, so it needs to be powered through the PIN
-    let led_pwr = peripherals.pins.gpio17;
+    // Required for Adafruit Feather ESP32-S3. The WS2812 VDD pin is connected
+    // to PIN 21, so it needs to be powered through the PIN
+
+    let led_pwr = peripherals.pins.gpio21;
     let mut led_pwr = PinDriver::output(led_pwr)?;
     led_pwr.set_high()?;
 
     let nexpixel_ctx_handle =
         NEOPIXEL_CTX.init(Arc::new(Mutex::new(RefCell::new(NeoPixelContext {
-            pin: RefCell::new(peripherals.pins.gpio18),
+            pin: RefCell::new(peripherals.pins.gpio33),
             channel: RefCell::new(peripherals.rmt.channel0),
             tx_config: TransmitConfig::new().clock_divider(1),
         }))));
+    let neopixel_ctx0 = nexpixel_ctx_handle.clone();
     let neopixel_ctx1 = nexpixel_ctx_handle.clone();
     let neopixel_ctx2 = nexpixel_ctx_handle.clone();
-    let neopixel_ctx3 = nexpixel_ctx_handle.clone();
 
-    neopixel(NeopixelColor::Red, neopixel_ctx1)?;
+    neopixel(NeopixelColor::Red, neopixel_ctx0)?;
 
     let httpd = lazy_http_server::lazy_init_http_server::LazyInitHttpServer::new();
     let (tx, rx) = mpsc::channel::<SysLoopMsg>();
@@ -132,7 +137,7 @@ fn main() -> anyhow::Result<()> {
         }
         WifiEvent::StaDisconnected => {
             info!("******* Received STA Disconnected event");
-            if let Err(err) = neopixel(NeopixelColor::Red, neopixel_ctx2.clone()) {
+            if let Err(err) = neopixel(NeopixelColor::Red, neopixel_ctx1.clone()) {
                 info!("Error using neopixel {:?}", err);
             }
             tx.send(SysLoopMsg::WifiDisconnect)
@@ -148,7 +153,7 @@ fn main() -> anyhow::Result<()> {
     let _ip_event_sub = sysloop.subscribe(move |event: &IpEvent| match event {
         IpEvent::DhcpIpAssigned(_assignment) => {
             info!("************ Received IPEvent address assigned");
-            if let Err(err) = neopixel(NeopixelColor::Green, neopixel_ctx3.clone()) {
+            if let Err(err) = neopixel(NeopixelColor::Green, neopixel_ctx2.clone()) {
                 info!("Error using neopixel {:?}", err);
             }
             tx1.send(SysLoopMsg::IpAddressAsquired)
