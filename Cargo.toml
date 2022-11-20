@@ -25,6 +25,7 @@ experimental = ["esp-idf-svc/experimental", "embedded-svc/experimental"]
 [dependencies]
 heapless = "0.7"
 futures = { version = "0.3", features = ["async-await"] }
+embedded-hal = { version = "0.2" }
 #esp32s3 = "0.3"
 embedded-svc = { git = "https://github.com/esp-rs/embedded-svc", features = [
     "nightly",

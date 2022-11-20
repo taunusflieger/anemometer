@@ -28,6 +28,7 @@ dependencies = [
  "embassy-futures",
  "embassy-sync",
  "embassy-time",
+ "embedded-hal 0.2.7",
  "embedded-svc",
  "embuild",
  "esp-idf-hal",
