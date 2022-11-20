@@ -42,7 +42,6 @@ fn main() -> anyhow::Result<()> {
 
     let peripherals = peripherals::SystemPeripherals::take();
 
-    info!("Initialize neopixel");
     let mut status_led =
         neopixel::ws2812::NeoPixel::new(peripherals.neopixel.channel, peripherals.neopixel.pin)?;
 
@@ -98,8 +97,7 @@ fn main() -> anyhow::Result<()> {
     let tx1 = tx.clone();
     let tx2 = tx.clone();
 
-    tx.clone()
-        .send(SysLoopMsg::NeopixelMsg { color: 0x00ff00 })?;
+    tx.send(SysLoopMsg::NeopixelMsg { color: 0x00ff00 })?;
 
     let _wifi_event_sub = sysloop.subscribe(move |event: &WifiEvent| match event {
         WifiEvent::StaConnected => {
@@ -215,7 +213,6 @@ fn main() -> anyhow::Result<()> {
                 } // the other error value is Empty which is okay and we ignore
             }
         }
-
         esp_idf_hal::delay::FreeRtos::delay_ms(100);
     }
 }
