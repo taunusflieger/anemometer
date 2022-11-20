@@ -55,3 +55,7 @@ Now it will download `firmware.bin` and flash it. After that it will set the OTA
 
 In this experiment the reset isn't done automatically. Reset the ESP32-C3 and see the new version boot.
 The new version will see there is no later version online to flash.
+
+### Future plans
+* Support for Adafruit Feather ESP32-S3 TFT display controller ST7789 (similar to ST7735). Implmentation approach could use the [mipidsi driver](https://github.com/almindor/mipidsi) 
+* Support for Adafruit [Ultimate GPS featherwing](https://learn.adafruit.com/adafruit-ultimate-gps-featherwing) to support the calibration process for the wind speed parameters

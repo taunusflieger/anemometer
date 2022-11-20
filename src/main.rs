@@ -12,6 +12,7 @@ use esp_idf_svc::{
 use esp_idf_sys as _;
 use esp_idf_sys::{self as sys, esp, esp_wifi_set_ps, wifi_ps_type_t_WIFI_PS_NONE};
 use log::info;
+use mipidsi::models::ST7789;
 use smart_leds::{colors::*, RGB8};
 use std::{thread::sleep, time::Duration};
 
