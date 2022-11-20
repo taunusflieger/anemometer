@@ -48,6 +48,7 @@ embassy-futures = { version = "0.1" }
 embassy-sync = { version = "0.1", features = ["std"] }
 embassy-time = { version = "0.1" }
 static_cell = { version = "1" }
+smart-leds = "*"
 anyhow = "1.0"
 toml-cfg = "0.1"
 url = "2"

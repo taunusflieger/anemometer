@@ -12,6 +12,7 @@ use esp_idf_svc::{
 use esp_idf_sys as _;
 use esp_idf_sys::{self as sys, esp, esp_wifi_set_ps, wifi_ps_type_t_WIFI_PS_NONE};
 use log::info;
+use smart_leds::{colors::*, RGB8};
 use std::{thread::sleep, time::Duration};
 
 use std::sync::mpsc;
@@ -33,7 +34,7 @@ pub struct Config {
 enum SysLoopMsg {
     WifiDisconnect,
     IpAddressAsquired,
-    NeopixelMsg { color: u32 },
+    NeopixelMsg { color: RGB8 },
 }
 
 fn main() -> anyhow::Result<()> {
@@ -49,7 +50,7 @@ fn main() -> anyhow::Result<()> {
     let mut pwr_pin = PinDriver::output(peripherals.neopixel.dc)?;
     pwr_pin.set_high()?;
 
-    status_led.set_blocking_rgb(255, 0, 0)?;
+    status_led.write(DARK_ORANGE)?;
 
     let httpd = lazy_http_server::lazy_init_http_server::LazyInitHttpServer::new();
     let (tx, rx) = mpsc::channel::<SysLoopMsg>();
@@ -96,8 +97,7 @@ fn main() -> anyhow::Result<()> {
 
     let tx1 = tx.clone();
     let tx2 = tx.clone();
-
-    tx.send(SysLoopMsg::NeopixelMsg { color: 0x00ff00 })?;
+    let tx3 = tx.clone();
 
     let _wifi_event_sub = sysloop.subscribe(move |event: &WifiEvent| match event {
         WifiEvent::StaConnected => {
@@ -135,18 +135,19 @@ fn main() -> anyhow::Result<()> {
     loop {
         match rx.try_recv() {
             Ok(SysLoopMsg::NeopixelMsg { color }) => {
-                status_led.set_blocking(color)?;
+                status_led.write(color)?;
             }
             Ok(SysLoopMsg::WifiDisconnect) => {
                 info!("mpsc loop: WifiDisconnect received");
 
                 httpd.clear();
-                tx2.send(SysLoopMsg::NeopixelMsg { color: 0x00ff00 })?;
+                tx2.send(SysLoopMsg::NeopixelMsg { color: RED })?;
             }
             Ok(SysLoopMsg::IpAddressAsquired) => {
                 info!("mpsc loop: IpAddressAsquired received");
+                let tx4 = tx3.clone();
 
-                tx2.send(SysLoopMsg::NeopixelMsg { color: 0x0000ff })?;
+                tx3.send(SysLoopMsg::NeopixelMsg { color: DARK_GREEN })?;
                 let server_config = Configuration::default();
                 let mut s = httpd.create(&server_config);
 
@@ -178,6 +179,7 @@ fn main() -> anyhow::Result<()> {
 
                 if let Err(err) =
                     s.fn_handler("/api/ota", embedded_svc::http::Method::Post, move |req| {
+                        tx4.send(SysLoopMsg::NeopixelMsg { color: BLUE })?;
                         url_handler::ota_update_handler(req)
                     })
                 {

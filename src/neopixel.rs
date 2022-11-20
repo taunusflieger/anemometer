@@ -5,8 +5,9 @@ pub mod ws2812 {
     use esp_idf_hal::rmt::RmtChannel;
     use esp_idf_hal::rmt::{FixedLengthSignal, PinState, Pulse, TxRmtDriver};
     use esp_idf_sys::EspError;
-
+    use smart_leds::RGB8;
     use std::time::Duration;
+
     pub struct NeoPixel<'d> {
         tx: TxRmtDriver<'d>,
         high: (Pulse, Pulse),
@@ -59,6 +60,10 @@ pub mod ws2812 {
                 .start_blocking(&signal)
                 .expect("Rmt sending sequence failed");
             Ok(())
+        }
+
+        pub fn write(&mut self, color: RGB8) -> Result<(), EspError> {
+            self.set_blocking_rgb(color.r, color.g, color.b)
         }
     }
 }
