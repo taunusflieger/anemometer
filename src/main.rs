@@ -12,14 +12,17 @@ use esp_idf_svc::{
 use esp_idf_sys as _;
 use esp_idf_sys::{self as sys, esp, esp_wifi_set_ps, wifi_ps_type_t_WIFI_PS_NONE};
 use log::info;
-use mipidsi::models::ST7789;
+
 use smart_leds::{colors::*, RGB8};
 use std::{thread::sleep, time::Duration};
 
 use std::sync::mpsc;
+mod errors;
 mod lazy_http_server;
 mod neopixel;
 mod peripherals;
+
+mod services;
 mod web_server;
 
 sys::esp_app_desc!();
@@ -53,6 +56,15 @@ fn main() -> anyhow::Result<()> {
 
     status_led.write(DARK_ORANGE)?;
 
+    // ******************************************************************
+    // Need to set reset pin for display here
+    // TODO: find a way to move this into services.rs
+    // ******************************************************************
+    #[cfg(feature = "tft")]
+    let rst_pin = PinDriver::output(peripherals.display_rst)?;
+
+    // ******************************************************************
+    // ******************************************************************
     let httpd = lazy_http_server::lazy_init_http_server::LazyInitHttpServer::new();
     let (tx, rx) = mpsc::channel::<SysLoopMsg>();
 
