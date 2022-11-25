@@ -35,11 +35,14 @@ dependencies = [
  "esp-idf-svc",
  "esp-idf-sys",
  "futures",
+ "gfx-xtra",
  "heapless",
  "log",
  "mipidsi",
+ "profont",
  "smart-leds",
  "toml-cfg",
+ "u8g2-fonts",
  "url",
 ]
 
@@ -913,6 +916,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "gfx-xtra"
+version = "0.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "25d0cb7ea9abd0567079dc1b36a513c9c52ed0a4f27bc344c305666b0c783c93"
+dependencies = [
+ "embedded-graphics",
+]
+
+[[package]]
 name = "glob"
 version = "0.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1327,6 +1339,15 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "5ea3d908b0e36316caf9e9e2c4625cdde190a7e6f440d794667ed17a1855e725"
 dependencies = [
  "unicode-ident",
+]
+
+[[package]]
+name = "profont"
+version = "0.6.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "bd908932b251e9f146130df7566e8f7c5b0c6ddb29f6d67571f3579f59043c36"
+dependencies = [
+ "embedded-graphics",
 ]
 
 [[package]]
@@ -1776,6 +1797,15 @@ dependencies = [
  "serde",
  "syn",
  "toml",
+]
+
+[[package]]
+name = "u8g2-fonts"
+version = "0.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "c2bff8090391e962c67f400ab1f085b73a0429038812f1b8f8e06ec62e921202"
+dependencies = [
+ "embedded-graphics-core",
 ]
 
 [[package]]

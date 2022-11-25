@@ -2,45 +2,46 @@ use crate::errors::*;
 use crate::peripherals::DisplaySpiPeripherals;
 use core::fmt::Debug;
 use core::mem;
+use esp_idf_hal::prelude::*;
 
 #[cfg(feature = "tft")]
 use display_interface_spi::SPIInterfaceNoCS;
 
 #[cfg(feature = "tft")]
-use embedded_graphics::{pixelcolor::Rgb565, prelude::*, primitives::*};
+use embedded_graphics::pixelcolor::Rgb565;
+
 use esp_idf_hal::delay;
-use esp_idf_hal::delay::FreeRtos;
+
 use esp_idf_hal::gpio::*;
 use esp_idf_hal::peripheral::Peripheral;
 use esp_idf_hal::spi::*;
+use gfx_xtra::draw_target::{Flushable, OwnedDrawTargetExt};
 
 #[cfg(feature = "tft")]
-use mipidsi::{models::ST7789, Builder, Display};
+use mipidsi::{Builder, Orientation};
 
 #[cfg(feature = "tft")]
-fn display(
+pub fn display(
     display_peripherals: DisplaySpiPeripherals<
         impl Peripheral<P = impl SpiAnyPins + 'static> + 'static,
+        impl Peripheral<P = impl OutputPin + 'static> + 'static,
     >,
-) -> Display<
-    SPIInterfaceNoCS<
-        SpiExclusiveDevice<QSPI1, (Pin3<IOF0<NoInvert>>, (), Pin5<IOF0<NoInvert>>)>,
-        Pin13<Output<Regular<NoInvert>>>,
-    >,
-    Pin11<Output<Regular<NoInvert>>>,
-    ST7789,
-> {
+) -> Result<impl Flushable<Color = Rgb565, Error = impl Debug + 'static> + 'static, InitError> {
     if let Some(backlight) = display_peripherals.control.backlight {
-        let mut backlight = PinDriver::output(backlight)?;
+        let mut backlight = PinDriver::output(backlight).unwrap();
 
-        backlight.set_drive_strength(DriveStrength::I40mA)?;
-        backlight.set_high()?;
+        backlight.set_drive_strength(DriveStrength::I40mA).unwrap();
+        backlight.set_high().unwrap();
 
         mem::forget(backlight); // TODO: For now
     }
 
-    let baudrate = 26.MHz().into();
-    //let baudrate = 40.MHz().into();
+    // power ST7789
+    let mut vdd = PinDriver::output(display_peripherals.vdd)?;
+    vdd.set_high()?;
+    mem::forget(vdd);
+
+    let baudrate = 80.MHz().into();
 
     let spi_display = SpiDeviceDriver::new_single(
         display_peripherals.spi,
@@ -48,45 +49,26 @@ fn display(
         display_peripherals.sdo,
         Option::<Gpio21>::None,
         Dma::Disabled,
-        display_peripherals.cs,
+        Some(display_peripherals.cs),
         &SpiConfig::new().baudrate(baudrate),
-    )?;
-
-    let dc = PinDriver::output(display_peripherals.control.dc)?;
-
-    let di = SPIInterfaceNoCS::new(spi_display, dc);
-
-    let mut display = Builder::st7789(di) // known model or with_model(model)
-        .with_display_size(240, 135) // set any options on the builder before init
-        .init(&mut delay::Ets, Some(rst_pin)); // optional reset pin
-
-    let circle1 =
-        Circle::new(Point::new(128, 64), 64).into_styled(PrimitiveStyle::with_fill(Rgb565::RED));
-    let circle2 = Circle::new(Point::new(64, 64), 64)
-        .into_styled(PrimitiveStyle::with_stroke(Rgb565::GREEN, 1));
-
-    let blue_with_red_outline = PrimitiveStyleBuilder::new()
-        .fill_color(Rgb565::BLUE)
-        .stroke_color(Rgb565::RED)
-        .stroke_width(1) // > 1 is not currently supported in embedded-graphics on triangles
-        .build();
-    let triangle = Triangle::new(
-        Point::new(40, 120),
-        Point::new(40, 220),
-        Point::new(140, 120),
     )
-    .into_styled(blue_with_red_outline);
+    .unwrap();
 
-    let line = Line::new(Point::new(180, 160), Point::new(239, 239))
-        .into_styled(PrimitiveStyle::with_stroke(RgbColor::WHITE, 10));
+    let dc = PinDriver::output(display_peripherals.control.dc).unwrap();
+    let di = SPIInterfaceNoCS::new(spi_display, dc);
+    let rst = PinDriver::output(display_peripherals.control.rst).unwrap();
 
-    // draw two circles on black background
+    // create driver
+    let display = Builder::st7789_pico1(di)
+        .with_display_size(135, 240)
+        // set default orientation
+        .with_orientation(Orientation::Landscape(true))
+        // initialize
+        .init(&mut delay::Ets, Some(rst))
+        .unwrap();
 
-    display.clear(Rgb565::BLACK).unwrap();
-    circle1.draw(&mut display).unwrap();
-    circle2.draw(&mut display).unwrap();
-    triangle.draw(&mut display).unwrap();
-    line.draw(&mut display).unwrap();
+    let display = display.owned_color_converted().owned_noop_flushing();
+    Ok(display)
 }
 
 /*

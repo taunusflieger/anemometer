@@ -18,7 +18,7 @@ debug = true    # Symbols are nice and they don't increase the size on Flash
 opt-level = "z"
 
 [features]
-default = []
+default = ["tft"]
 experimental = ["esp-idf-svc/experimental", "embedded-svc/experimental"]
 tft = [
     "mipidsi",
@@ -39,9 +39,12 @@ esp-idf-hal = { version = "0.39", features = [] }
 display-interface = { version = "0.4", optional = true }
 display-interface-spi = { version = "0.4", optional = true }
 smart-leds = "*"
+gfx-xtra = "0.1"
 mipidsi = { version = "0.5", optional = true }
 anyhow = "1.0"
 toml-cfg = "0.1"
+profont = "0.6.1"
+u8g2-fonts = "0.2.0"
 url = "2"
 log = { version = "0.4", features = [
     "max_level_debug",

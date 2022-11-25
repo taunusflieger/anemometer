@@ -4,15 +4,15 @@ use esp_idf_hal::peripherals::Peripherals;
 use esp_idf_hal::rmt::CHANNEL0;
 use esp_idf_hal::spi::*;
 
-pub struct SystemPeripherals<SPI> {
+pub struct SystemPeripherals<SPI, VDD> {
     pub neopixel: NeoPixelPeripherals,
-    pub display: DisplaySpiPeripherals<SPI>,
+    pub display: DisplaySpiPeripherals<SPI, VDD>,
     pub modem: Modem,
-    pub display_rst: AnyOutputPin,
+    // pub display_rst: AnyOutputPin,
 }
 
 //#[cfg(any(esp32s2, esp32s3))]
-impl SystemPeripherals<SPI2> {
+impl SystemPeripherals<SPI2, Gpio21> {
     pub fn take() -> Self {
         let peripherals = Peripherals::take().unwrap();
 
@@ -30,16 +30,17 @@ impl SystemPeripherals<SPI2> {
             display: DisplaySpiPeripherals {
                 control: DisplayControlPeripherals {
                     backlight: Some(peripherals.pins.gpio45.into()),
-                    dc: peripherals.pins.gpio21.into(),
-                    //rst: peripherals.pins.gpio40.into(),
+                    dc: peripherals.pins.gpio39.into(),
+                    rst: peripherals.pins.gpio40.into(),
                 },
                 spi: peripherals.spi2,
-                sclk: peripherals.pins.gpio7.into(),
-                sdo: peripherals.pins.gpio39.into(),
-                cs: None,
+                sclk: peripherals.pins.gpio36.into(),
+                sdo: peripherals.pins.gpio35.into(),
+                cs: peripherals.pins.gpio7.into(),
+                vdd: peripherals.pins.gpio21,
             },
             modem: peripherals.modem,
-            display_rst: peripherals.pins.gpio40.into(),
+            //display_rst: peripherals.pins.gpio40.into(),
         }
     }
 }
@@ -53,12 +54,13 @@ pub struct NeoPixelPeripherals {
 pub struct DisplayControlPeripherals {
     pub backlight: Option<AnyOutputPin>,
     pub dc: AnyOutputPin,
-    //pub rst: AnyOutputPin,
+    pub rst: AnyOutputPin,
 }
-pub struct DisplaySpiPeripherals<SPI> {
+pub struct DisplaySpiPeripherals<SPI, VDD> {
     pub control: DisplayControlPeripherals,
     pub spi: SPI,
     pub sclk: AnyOutputPin,
     pub sdo: AnyOutputPin,
-    pub cs: Option<AnyOutputPin>,
+    pub cs: AnyOutputPin,
+    pub vdd: VDD,
 }
