@@ -16,6 +16,8 @@ use esp_idf_sys as _;
 use esp_idf_sys::{self as sys, esp, esp_wifi_set_ps, wifi_ps_type_t_WIFI_PS_NONE};
 use log::info;
 use smart_leds::{colors::*, RGB8};
+use std::format;
+use std::net::Ipv4Addr;
 use std::sync::mpsc;
 use std::{thread::sleep, time::Duration};
 use u8g2_fonts::types::HorizontalAlignment;
@@ -34,6 +36,8 @@ mod web_server;
 
 sys::esp_app_desc!();
 
+const FIRMWARE_VERSION: &str = env!("CARGO_PKG_VERSION");
+
 #[toml_cfg::toml_config]
 pub struct Config {
     #[default("")]
@@ -44,7 +48,7 @@ pub struct Config {
 
 enum SysLoopMsg {
     WifiDisconnect,
-    IpAddressAsquired,
+    IpAddressAsquired { ip: Ipv4Addr },
     NeopixelMsg { color: RGB8 },
 }
 
@@ -136,13 +140,8 @@ fn main() -> anyhow::Result<()> {
         }
         WifiEvent::StaDisconnected => {
             info!("******* Received STA Disconnected event");
-            /*
-            if let Err(err) = neopixel(NeopixelColor::Red, neopixel_ctx1.clone()) {
-                info!("Error using neopixel {:?}", err);
-            } */
             tx.send(SysLoopMsg::WifiDisconnect)
                 .expect("wifi event channel closed");
-            //    sleep(Duration::from_millis(10));
             if let Err(err) = wifi.connect() {
                 info!("Error calling wifi.connect in wifi reconnect {:?}", err);
             }
@@ -151,14 +150,16 @@ fn main() -> anyhow::Result<()> {
     })?;
 
     let _ip_event_sub = sysloop.subscribe(move |event: &IpEvent| match event {
-        IpEvent::DhcpIpAssigned(_assignment) => {
-            info!("************ Received IPEvent address assigned");
-            /*
-            if let Err(err) = neopixel(NeopixelColor::Green, neopixel_ctx2.clone()) {
-                info!("Error using neopixel {:?}", err);
-            } */
-            tx1.send(SysLoopMsg::IpAddressAsquired)
-                .expect("IP event channel closed");
+        IpEvent::DhcpIpAssigned(assignment) => {
+            info!(
+                "************ Received IPEvent address assigned {:?}",
+                assignment.ip_settings.ip
+            );
+
+            tx1.send(SysLoopMsg::IpAddressAsquired {
+                ip: assignment.ip_settings.ip,
+            })
+            .expect("IP event channel closed");
         }
         _ => info!("Received other IPEvent"),
     })?;
@@ -174,11 +175,24 @@ fn main() -> anyhow::Result<()> {
                 httpd.clear();
                 tx2.send(SysLoopMsg::NeopixelMsg { color: RED })?;
             }
-            Ok(SysLoopMsg::IpAddressAsquired) => {
+            Ok(SysLoopMsg::IpAddressAsquired { ip }) => {
                 info!("mpsc loop: IpAddressAsquired received");
                 let tx4 = tx3.clone();
 
                 tx3.send(SysLoopMsg::NeopixelMsg { color: DARK_GREEN })?;
+
+                let text = format!("IP: {}  FW: v{}", ip.to_string(), FIRMWARE_VERSION);
+                //"IP: 192.168.100.102  FW: v0.38.21";
+                let font = FontRenderer::new::<fonts::u8g2_font_t0_14_tf>();
+                font.render_aligned(
+                    text.as_str(),
+                    display.bounding_box().center() - Point::new(115, -60),
+                    VerticalPosition::Baseline,
+                    HorizontalAlignment::Left,
+                    FontColor::Transparent(Rgb565::WHITE),
+                    &mut display,
+                )
+                .unwrap();
                 let server_config = Configuration::default();
                 let mut s = httpd.create(&server_config);
 
