@@ -54,12 +54,7 @@ fn main() -> anyhow::Result<()> {
 
     let peripherals = peripherals::SystemPeripherals::take();
 
-    let mut status_led =
-        neopixel::ws2812::NeoPixel::new(peripherals.neopixel.channel, peripherals.neopixel.pin)?;
-
-    // Required for neopixel
-    let mut pwr_pin = PinDriver::output(peripherals.neopixel.dc)?;
-    pwr_pin.set_high()?;
+    let mut status_led = neopixel::ws2812::NeoPixel::new(peripherals.neopixel)?;
 
     status_led.write(DARK_ORANGE)?;
 

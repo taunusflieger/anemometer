@@ -1,4 +1,6 @@
 pub mod ws2812 {
+    use crate::peripherals::NeoPixelPeripherals;
+    use core::mem;
     use esp_idf_hal::gpio::*;
     use esp_idf_hal::peripheral::Peripheral;
     use esp_idf_hal::rmt::config::TransmitConfig;
@@ -10,6 +12,7 @@ pub mod ws2812 {
 
     pub struct NeoPixel<'d> {
         tx: TxRmtDriver<'d>,
+        vdd: PinDriver<'d, AnyOutputPin, Output>,
         high: (Pulse, Pulse),
         low: (Pulse, Pulse),
     }
@@ -20,14 +23,24 @@ pub mod ws2812 {
 
     impl<'d> NeoPixel<'d> {
         pub fn new<C>(
-            channel: impl Peripheral<P = C> + 'd,
-            pin: impl Peripheral<P = impl OutputPin> + 'd,
+            neopixel_peripherals: NeoPixelPeripherals<
+                impl Peripheral<P = impl OutputPin + 'static> + 'static,
+                impl Peripheral<P = C> + 'd,
+            >,
         ) -> Result<NeoPixel<'d>, EspError>
         where
             C: RmtChannel,
         {
+            let mut vdd: PinDriver<AnyOutputPin, Output> =
+                PinDriver::output(neopixel_peripherals.dc).unwrap();
+            vdd.set_high()?;
+
             let config = TransmitConfig::new().clock_divider(1);
-            let tx = match TxRmtDriver::new(channel, pin, &config) {
+            let tx = match TxRmtDriver::new(
+                neopixel_peripherals.channel,
+                neopixel_peripherals.pin,
+                &config,
+            ) {
                 Ok(r) => r,
                 Err(e) => panic!("Problem ccreate TxRmtDriver: {:?}", e),
             };
@@ -39,9 +52,18 @@ pub mod ws2812 {
             let t1l = Pulse::new_with_duration(ticks_hz, PinState::Low, &ns(600))?;
             Ok(NeoPixel {
                 tx,
+                vdd,
                 high: (t1h, t1l),
                 low: (t0h, t0l),
             })
+        }
+
+        pub fn power_on(&mut self, set: bool) {
+            if set {
+                self.vdd.set_high().expect("neopixel led power on failed");
+            } else {
+                self.vdd.set_low().expect("neopixel led power off failed");
+            }
         }
 
         pub fn set_blocking_rgb(&mut self, r: u8, g: u8, b: u8) -> Result<(), EspError> {

@@ -4,15 +4,15 @@ use esp_idf_hal::peripherals::Peripherals;
 use esp_idf_hal::rmt::CHANNEL0;
 use esp_idf_hal::spi::*;
 
-pub struct SystemPeripherals<SPI, VDD> {
-    pub neopixel: NeoPixelPeripherals,
+pub struct SystemPeripherals<SPI, VDD, NEOPIXELPIN, CHANNEL> {
+    pub neopixel: NeoPixelPeripherals<NEOPIXELPIN, CHANNEL>,
     pub display: DisplaySpiPeripherals<SPI, VDD>,
     pub modem: Modem,
     // pub display_rst: AnyOutputPin,
 }
 
 //#[cfg(any(esp32s2, esp32s3))]
-impl SystemPeripherals<SPI2, Gpio21> {
+impl SystemPeripherals<SPI2, Gpio21, Gpio33, CHANNEL0> {
     pub fn take() -> Self {
         let peripherals = Peripherals::take().unwrap();
 
@@ -45,10 +45,10 @@ impl SystemPeripherals<SPI2, Gpio21> {
     }
 }
 
-pub struct NeoPixelPeripherals {
+pub struct NeoPixelPeripherals<NEOPIXELPIN, CHANNEL> {
     pub dc: AnyOutputPin,
-    pub pin: AnyOutputPin,
-    pub channel: CHANNEL0,
+    pub pin: NEOPIXELPIN,
+    pub channel: CHANNEL,
 }
 
 pub struct DisplayControlPeripherals {
