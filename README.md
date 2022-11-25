@@ -7,6 +7,7 @@ This experiment uses IDF OTA functionality in Rust on an ESP32-C3-Rust Board
 
 This is WIP - should lead to a sensor node for an anemometer.
 
+![Adafruit Feather ESP32-S3 TFT](assets/IMG_2069.jpeg)
 
 ## Scope
 ### Technical
