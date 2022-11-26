@@ -1,8 +1,10 @@
 use crate::web_server::url_handler;
+use core::mem;
 use core::str;
 use embedded_graphics::draw_target::DrawTarget;
 use embedded_graphics::pixelcolor::Rgb565;
 use embedded_graphics::prelude::*;
+use embedded_graphics::{mono_font::MonoTextStyle, text::Text};
 use embedded_svc::wifi::{self, AuthMethod, ClientConfiguration};
 use esp_idf_hal::gpio::*;
 use esp_idf_svc::http::server::Configuration;
@@ -20,12 +22,7 @@ use std::format;
 use std::net::Ipv4Addr;
 use std::sync::mpsc;
 use std::{thread::sleep, time::Duration};
-use u8g2_fonts::types::HorizontalAlignment;
-use u8g2_fonts::{
-    fonts,
-    types::{FontColor, VerticalPosition},
-    FontRenderer,
-};
+
 mod errors;
 mod lazy_http_server;
 mod neopixel;
@@ -59,34 +56,45 @@ fn main() -> anyhow::Result<()> {
     let peripherals = peripherals::SystemPeripherals::take();
 
     let mut status_led = neopixel::ws2812::NeoPixel::new(peripherals.neopixel)?;
+    status_led.power_on(true);
 
     status_led.write(DARK_ORANGE)?;
 
-    // ******************************************************************
-    // Experimental
-    // ******************************************************************
-    #[cfg(feature = "tft")]
     let display_peripherals = peripherals.display;
     let mut display = services::display(display_peripherals).unwrap();
+    let backlight = peripherals.display_backlight;
 
-    let _d = display.clear(Rgb565::BLACK);
+    display.clear(Rgb565::BLACK).unwrap();
 
-    let font = FontRenderer::new::<fonts::u8g2_font_logisoso16_tf>();
+    let text_style = MonoTextStyle::new(&profont::PROFONT_18_POINT, Rgb565::RED);
+    Text::new("ESP32-S3 Anemometer", Point::new(0, 18), text_style)
+        .draw(&mut display)
+        .unwrap();
 
-    let text = "ESP32-S3 Anemometer";
+    // TODO: Demo text replace with real function
+    let text_style = MonoTextStyle::new(&profont::PROFONT_24_POINT, Rgb565::YELLOW);
+    Text::new("GPS: 12", Point::new(0, 44), text_style)
+        .draw(&mut display)
+        .unwrap();
+    let text_style = MonoTextStyle::new(&profont::PROFONT_18_POINT, Rgb565::YELLOW);
+    Text::new("m/s", Point::new(160, 42), text_style)
+        .draw(&mut display)
+        .unwrap();
+    let text_style = MonoTextStyle::new(&profont::PROFONT_24_POINT, Rgb565::GREEN);
+    Text::new("Win: 11.5", Point::new(0, 74), text_style)
+        .draw(&mut display)
+        .unwrap();
+    let text_style = MonoTextStyle::new(&profont::PROFONT_18_POINT, Rgb565::GREEN);
+    Text::new("m/s", Point::new(160, 72), text_style)
+        .draw(&mut display)
+        .unwrap();
+    let text_style = MonoTextStyle::new(&profont::PROFONT_14_POINT, Rgb565::MAGENTA);
+    Text::new("GPS: conn  data: wrt", Point::new(0, 94), text_style)
+        .draw(&mut display)
+        .unwrap();
+    // we do it here to prevent garbage on the screen
+    turn_backlight_on(backlight);
 
-    font.render_aligned(
-        text,
-        display.bounding_box().center() - Point::new(115, 35),
-        VerticalPosition::Baseline,
-        HorizontalAlignment::Left,
-        FontColor::Transparent(Rgb565::RED),
-        &mut display,
-    )
-    .unwrap();
-
-    // ******************************************************************
-    // ******************************************************************
     let httpd = lazy_http_server::lazy_init_http_server::LazyInitHttpServer::new();
     let (tx, rx) = mpsc::channel::<SysLoopMsg>();
 
@@ -181,17 +189,13 @@ fn main() -> anyhow::Result<()> {
 
                 tx3.send(SysLoopMsg::NeopixelMsg { color: DARK_GREEN })?;
 
-                let text = format!("IP: {}  FW: v{}", ip.to_string(), FIRMWARE_VERSION);
-                //"IP: 192.168.100.102  FW: v0.38.21";
-                let font = FontRenderer::new::<fonts::u8g2_font_t0_14_tf>();
-                font.render_aligned(
-                    text.as_str(),
-                    display.bounding_box().center() - Point::new(115, -60),
-                    VerticalPosition::Baseline,
-                    HorizontalAlignment::Left,
-                    FontColor::Transparent(Rgb565::WHITE),
-                    &mut display,
+                let text_style = MonoTextStyle::new(&profont::PROFONT_10_POINT, Rgb565::WHITE);
+                Text::new(
+                    format!("IP: {}  FW: V{}", ip.to_string(), FIRMWARE_VERSION).as_str(),
+                    Point::new(0, 129),
+                    text_style,
                 )
+                .draw(&mut display)
                 .unwrap();
                 let server_config = Configuration::default();
                 let mut s = httpd.create(&server_config);
@@ -262,4 +266,13 @@ fn main() -> anyhow::Result<()> {
         }
         esp_idf_hal::delay::FreeRtos::delay_ms(100);
     }
+}
+
+fn turn_backlight_on(p: AnyOutputPin) {
+    let mut backlight = PinDriver::output(p).unwrap();
+
+    backlight.set_drive_strength(DriveStrength::I40mA).unwrap();
+    backlight.set_high().unwrap();
+
+    mem::forget(backlight); // TODO: For now
 }

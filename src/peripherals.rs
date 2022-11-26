@@ -7,6 +7,7 @@ use esp_idf_hal::spi::*;
 pub struct SystemPeripherals<SPI, VDD, NEOPIXELPIN, CHANNEL> {
     pub neopixel: NeoPixelPeripherals<NEOPIXELPIN, CHANNEL>,
     pub display: DisplaySpiPeripherals<SPI, VDD>,
+    pub display_backlight: AnyOutputPin,
     pub modem: Modem,
     // pub display_rst: AnyOutputPin,
 }
@@ -29,7 +30,6 @@ impl SystemPeripherals<SPI2, Gpio21, Gpio33, CHANNEL0> {
             },
             display: DisplaySpiPeripherals {
                 control: DisplayControlPeripherals {
-                    backlight: Some(peripherals.pins.gpio45.into()),
                     dc: peripherals.pins.gpio39.into(),
                     rst: peripherals.pins.gpio40.into(),
                 },
@@ -40,7 +40,7 @@ impl SystemPeripherals<SPI2, Gpio21, Gpio33, CHANNEL0> {
                 vdd: peripherals.pins.gpio21,
             },
             modem: peripherals.modem,
-            //display_rst: peripherals.pins.gpio40.into(),
+            display_backlight: peripherals.pins.gpio45.into(),
         }
     }
 }
@@ -52,7 +52,6 @@ pub struct NeoPixelPeripherals<NEOPIXELPIN, CHANNEL> {
 }
 
 pub struct DisplayControlPeripherals {
-    pub backlight: Option<AnyOutputPin>,
     pub dc: AnyOutputPin,
     pub rst: AnyOutputPin,
 }

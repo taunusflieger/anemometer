@@ -5,15 +5,16 @@
 
 This experiment uses IDF OTA functionality in Rust on an ESP32-C3-Rust Board
 
-This is WIP - should lead to a sensor node for an anemometer.
+This is WIP - should lead to a sensor node for an anemometer. The anemometer needs to be calibrated. This will be done by moving (driving) the anemometer an comparing the rotation speed with parallel recorded GPS signal.
 
-![Adafruit Feather ESP32-S3 TFT](assets/IMG_2069.jpeg)
+![Adafruit Feather ESP32-S3 TFT](assets/IMG_2074.jpeg)
 
 ## Scope
 ### Technical
 - relayable wifi connection, automatic reconnect
 - MQTT transport of sensor data
 - OTA update
+- IRQ routine to record anemometer rotation pulses
 
 ### Functional
 - HTML page for OTA update
@@ -21,8 +22,16 @@ This is WIP - should lead to a sensor node for an anemometer.
 - Data feed to AWS where an external web interface is hosted
 - WIFI parameter configuration through bluetooth
 
+### Functional for calibration use-case
+- TFT to display current GPS and current wind speed
+- Serial connection to a GPS receiver
+- Recording of anemometer rotation speed and GPS data on a Micro SD card
+
 ## What is working
 - Reliable wifi re-connect. When the wifi connection gets dropped, a re-connection process is started. When an IP address is received the HTTP Server is started again.
+- HTTP Server
+- OTA
+- TFT display
 
 The current OTA code is inspired by https://github.com/bakery/rust-esp32-std-demo/tree/feature/ota-updates
 

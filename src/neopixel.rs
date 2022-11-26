@@ -1,6 +1,5 @@
 pub mod ws2812 {
     use crate::peripherals::NeoPixelPeripherals;
-    use core::mem;
     use esp_idf_hal::gpio::*;
     use esp_idf_hal::peripheral::Peripheral;
     use esp_idf_hal::rmt::config::TransmitConfig;
