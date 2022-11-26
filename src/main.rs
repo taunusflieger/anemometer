@@ -4,10 +4,15 @@ use core::str;
 use embedded_graphics::draw_target::DrawTarget;
 use embedded_graphics::pixelcolor::Rgb565;
 use embedded_graphics::prelude::*;
+use embedded_graphics::primitives::{rectangle::Rectangle, PrimitiveStyleBuilder};
 use embedded_graphics::{mono_font::MonoTextStyle, text::Text};
+
 use embedded_svc::wifi::{self, AuthMethod, ClientConfiguration};
 use esp_idf_hal::gpio::*;
+
 use esp_idf_svc::http::server::Configuration;
+use esp_idf_svc::systime::EspSystemTime;
+use esp_idf_svc::timer::*;
 use esp_idf_svc::{
     eventloop::EspSystemEventLoop,
     netif::IpEvent,
@@ -16,12 +21,14 @@ use esp_idf_svc::{
 };
 use esp_idf_sys as _;
 use esp_idf_sys::{self as sys, esp, esp_wifi_set_ps, wifi_ps_type_t_WIFI_PS_NONE};
+
 use log::info;
 use smart_leds::{colors::*, RGB8};
 use std::format;
 use std::net::Ipv4Addr;
 use std::sync::mpsc;
 use std::{thread::sleep, time::Duration};
+use sys::EspError;
 
 mod errors;
 mod lazy_http_server;
@@ -43,10 +50,24 @@ pub struct Config {
     wifi_psk: &'static str,
 }
 
+enum DisplayFont {
+    Small,
+    Medium,
+    Large,
+}
+
+struct DisplayCmd {
+    display_font: DisplayFont,
+    color: Rgb565,
+    position: Point,
+    text: String,
+}
+
 enum SysLoopMsg {
     WifiDisconnect,
     IpAddressAsquired { ip: Ipv4Addr },
     NeopixelMsg { color: RGB8 },
+    DisplayMsg { cmd: DisplayCmd },
 }
 
 fn main() -> anyhow::Result<()> {
@@ -141,6 +162,9 @@ fn main() -> anyhow::Result<()> {
     let tx1 = tx.clone();
     let tx2 = tx.clone();
     let tx3 = tx.clone();
+    let tx4 = tx.clone();
+
+    let _timer1 = gps_signal_sim_timer(tx4);
 
     let _wifi_event_sub = sysloop.subscribe(move |event: &WifiEvent| match event {
         WifiEvent::StaConnected => {
@@ -174,6 +198,29 @@ fn main() -> anyhow::Result<()> {
 
     loop {
         match rx.try_recv() {
+            Ok(SysLoopMsg::DisplayMsg { cmd }) => {
+                let font = match cmd.display_font {
+                    DisplayFont::Small => profont::PROFONT_14_POINT,
+                    DisplayFont::Medium => profont::PROFONT_18_POINT,
+                    DisplayFont::Large => profont::PROFONT_24_POINT,
+                };
+
+                // erase background
+                let style = PrimitiveStyleBuilder::new()
+                    .fill_color(Rgb565::BLACK)
+                    .build();
+                let mut p = cmd.position.clone();
+                p.y = p.y - 24;
+                Rectangle::new(p, Size::new(240, 26))
+                    .into_styled(style)
+                    .draw(&mut display)
+                    .unwrap();
+
+                let text_style = MonoTextStyle::new(&font, cmd.color);
+                Text::new(cmd.text.as_str(), cmd.position, text_style)
+                    .draw(&mut display)
+                    .unwrap();
+            }
             Ok(SysLoopMsg::NeopixelMsg { color }) => {
                 status_led.write(color)?;
             }
@@ -275,4 +322,24 @@ fn turn_backlight_on(p: AnyOutputPin) {
     backlight.set_high().unwrap();
 
     mem::forget(backlight); // TODO: For now
+}
+
+fn gps_signal_sim_timer(tx: std::sync::mpsc::Sender<SysLoopMsg>) -> Result<EspTimer, EspError> {
+    let periodic_timer = EspTimerService::new()?.timer(move || {
+        let now = EspSystemTime {}.now();
+
+        tx.send(SysLoopMsg::DisplayMsg {
+            cmd: DisplayCmd {
+                display_font: DisplayFont::Large,
+                color: Rgb565::YELLOW,
+                position: Point::new(0, 44),
+                text: format!("GPS: {:?}", now),
+            },
+        })
+        .unwrap();
+    })?;
+
+    periodic_timer.every(Duration::from_secs(5))?;
+
+    Ok(periodic_timer)
 }
