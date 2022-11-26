@@ -14,6 +14,7 @@ This is WIP - should lead to a sensor node for an anemometer. The anemometer nee
 - relayable wifi connection, automatic reconnect
 - MQTT transport of sensor data
 - OTA update
+- NeoPixel for Wifi connection status indication
 - IRQ routine to record anemometer rotation pulses
 
 ### Functional
@@ -31,7 +32,7 @@ This is WIP - should lead to a sensor node for an anemometer. The anemometer nee
 - Reliable wifi re-connect. When the wifi connection gets dropped, a re-connection process is started. When an IP address is received the HTTP Server is started again.
 - HTTP Server
 - OTA
-- TFT display
+- Support for Adafruit Feather ESP32-S3 TFT display controller ST7789 (similar to ST7735). Implmentation approach uses [mipidsi driver](https://github.com/almindor/mipidsi) 
 
 The current OTA code is inspired by https://github.com/bakery/rust-esp32-std-demo/tree/feature/ota-updates
 
@@ -67,5 +68,4 @@ In this experiment the reset isn't done automatically. Reset the ESP32-C3 and se
 The new version will see there is no later version online to flash.
 
 ### Future plans
-* Support for Adafruit Feather ESP32-S3 TFT display controller ST7789 (similar to ST7735). Implmentation approach could use the [mipidsi driver](https://github.com/almindor/mipidsi) 
 * Support for Adafruit [Ultimate GPS featherwing](https://learn.adafruit.com/adafruit-ultimate-gps-featherwing) to support the calibration process for the wind speed parameters
