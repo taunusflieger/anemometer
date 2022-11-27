@@ -1,6 +1,6 @@
 [package]
 name = "anemometer"
-version = "0.4.1"
+version = "0.4.2"
 authors = ["Michael Zill <michael.zill@gmail.com>"]
 edition = "2021"
 resolver = "2"
