@@ -58,6 +58,6 @@ pub fn display(
         .init(&mut delay::Ets, Some(rst))
         .unwrap();
 
-    let display = display.owned_color_converted().owned_noop_flushing();
+    let display = display.owned_noop_flushing();
     Ok(display)
 }

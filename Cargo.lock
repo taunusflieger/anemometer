@@ -28,6 +28,7 @@ dependencies = [
  "display-interface",
  "display-interface-spi",
  "embedded-graphics",
+ "embedded-graphics-core",
  "embedded-hal 1.0.0-alpha.9 (git+https://github.com/rust-embedded/embedded-hal?tag=v1.0.0-alpha.9)",
  "embedded-svc",
  "embuild",

@@ -1,17 +1,15 @@
+use crate::screen::anemometer_screen::LayoutManager;
 use crate::web_server::url_handler;
 use core::mem;
 use core::str;
 use embedded_graphics::draw_target::DrawTarget;
 use embedded_graphics::pixelcolor::Rgb565;
 use embedded_graphics::prelude::*;
-use embedded_graphics::primitives::{rectangle::Rectangle, PrimitiveStyleBuilder};
-use embedded_graphics::{mono_font::MonoTextStyle, text::Text};
 
 use embedded_svc::wifi::{self, AuthMethod, ClientConfiguration};
 use esp_idf_hal::gpio::*;
 
 use esp_idf_svc::http::server::Configuration;
-use esp_idf_svc::systime::EspSystemTime;
 use esp_idf_svc::timer::*;
 use esp_idf_svc::{
     eventloop::EspSystemEventLoop,
@@ -34,7 +32,7 @@ mod errors;
 mod lazy_http_server;
 mod neopixel;
 mod peripherals;
-
+mod screen;
 mod services;
 mod web_server;
 
@@ -50,16 +48,13 @@ pub struct Config {
     wifi_psk: &'static str,
 }
 
-enum DisplayFont {
-    Small,
-    Medium,
-    Large,
+enum WidgetName {
+    GpsSpeed,
+    WindSpeed,
 }
 
 struct DisplayCmd {
-    display_font: DisplayFont,
-    color: Rgb565,
-    position: Point,
+    widget: WidgetName,
     text: String,
 }
 
@@ -87,32 +82,13 @@ fn main() -> anyhow::Result<()> {
 
     display.clear(Rgb565::BLACK).unwrap();
 
-    let text_style = MonoTextStyle::new(&profont::PROFONT_18_POINT, Rgb565::RED);
-    Text::new("ESP32-S3 Anemometer", Point::new(0, 18), text_style)
-        .draw(&mut display)
+    let layout_mgr = LayoutManager::new()?;
+
+    layout_mgr.draw_initial_screen(&mut display).unwrap();
+    layout_mgr
+        .draw_sw_version(&mut display, format!("FW: V{}", FIRMWARE_VERSION).as_str())
         .unwrap();
 
-    // TODO: Demo text replace with real function
-    let text_style = MonoTextStyle::new(&profont::PROFONT_24_POINT, Rgb565::YELLOW);
-    Text::new("GPS: 12", Point::new(0, 44), text_style)
-        .draw(&mut display)
-        .unwrap();
-    let text_style = MonoTextStyle::new(&profont::PROFONT_18_POINT, Rgb565::YELLOW);
-    Text::new("m/s", Point::new(160, 42), text_style)
-        .draw(&mut display)
-        .unwrap();
-    let text_style = MonoTextStyle::new(&profont::PROFONT_24_POINT, Rgb565::GREEN);
-    Text::new("Win: 11.5", Point::new(0, 74), text_style)
-        .draw(&mut display)
-        .unwrap();
-    let text_style = MonoTextStyle::new(&profont::PROFONT_18_POINT, Rgb565::GREEN);
-    Text::new("m/s", Point::new(160, 72), text_style)
-        .draw(&mut display)
-        .unwrap();
-    let text_style = MonoTextStyle::new(&profont::PROFONT_14_POINT, Rgb565::MAGENTA);
-    Text::new("GPS: conn  data: wrt", Point::new(0, 94), text_style)
-        .draw(&mut display)
-        .unwrap();
     // we do it here to prevent garbage on the screen
     turn_backlight_on(backlight);
 
@@ -163,8 +139,9 @@ fn main() -> anyhow::Result<()> {
     let tx2 = tx.clone();
     let tx3 = tx.clone();
     let tx4 = tx.clone();
-
+    let tx5 = tx.clone();
     let _timer1 = gps_signal_sim_timer(tx4);
+    let _timer2 = wind_signal_sim_timer(tx5);
 
     let _wifi_event_sub = sysloop.subscribe(move |event: &WifiEvent| match event {
         WifiEvent::StaConnected => {
@@ -199,27 +176,18 @@ fn main() -> anyhow::Result<()> {
     loop {
         match rx.try_recv() {
             Ok(SysLoopMsg::DisplayMsg { cmd }) => {
-                let font = match cmd.display_font {
-                    DisplayFont::Small => profont::PROFONT_14_POINT,
-                    DisplayFont::Medium => profont::PROFONT_18_POINT,
-                    DisplayFont::Large => profont::PROFONT_24_POINT,
+                match cmd.widget {
+                    WidgetName::GpsSpeed => {
+                        layout_mgr
+                            .draw_gps_speed(&mut display, &cmd.text.as_str())
+                            .unwrap();
+                    }
+                    WidgetName::WindSpeed => {
+                        layout_mgr
+                            .draw_wind_speed(&mut display, &cmd.text.as_str())
+                            .unwrap();
+                    }
                 };
-
-                // erase background
-                let style = PrimitiveStyleBuilder::new()
-                    .fill_color(Rgb565::BLACK)
-                    .build();
-                let mut p = cmd.position.clone();
-                p.y = p.y - 24;
-                Rectangle::new(p, Size::new(240, 26))
-                    .into_styled(style)
-                    .draw(&mut display)
-                    .unwrap();
-
-                let text_style = MonoTextStyle::new(&font, cmd.color);
-                Text::new(cmd.text.as_str(), cmd.position, text_style)
-                    .draw(&mut display)
-                    .unwrap();
             }
             Ok(SysLoopMsg::NeopixelMsg { color }) => {
                 status_led.write(color)?;
@@ -229,6 +197,7 @@ fn main() -> anyhow::Result<()> {
 
                 httpd.clear();
                 tx2.send(SysLoopMsg::NeopixelMsg { color: RED })?;
+                layout_mgr.draw_ip_address(&mut display, " ").unwrap();
             }
             Ok(SysLoopMsg::IpAddressAsquired { ip }) => {
                 info!("mpsc loop: IpAddressAsquired received");
@@ -236,14 +205,10 @@ fn main() -> anyhow::Result<()> {
 
                 tx3.send(SysLoopMsg::NeopixelMsg { color: DARK_GREEN })?;
 
-                let text_style = MonoTextStyle::new(&profont::PROFONT_10_POINT, Rgb565::WHITE);
-                Text::new(
-                    format!("IP: {}  FW: V{}", ip.to_string(), FIRMWARE_VERSION).as_str(),
-                    Point::new(0, 129),
-                    text_style,
-                )
-                .draw(&mut display)
-                .unwrap();
+                layout_mgr
+                    .draw_ip_address(&mut display, format!("IP: {}", ip.to_string()).as_str())
+                    .unwrap();
+
                 let server_config = Configuration::default();
                 let mut s = httpd.create(&server_config);
 
@@ -326,20 +291,38 @@ fn turn_backlight_on(p: AnyOutputPin) {
 
 fn gps_signal_sim_timer(tx: std::sync::mpsc::Sender<SysLoopMsg>) -> Result<EspTimer, EspError> {
     let periodic_timer = EspTimerService::new()?.timer(move || {
-        let now = EspSystemTime {}.now();
+        let random_number = unsafe { esp_idf_sys::esp_random() };
+        let sim_gps_speed: u32 = random_number % (33 - 15 + 1) + 15;
 
         tx.send(SysLoopMsg::DisplayMsg {
             cmd: DisplayCmd {
-                display_font: DisplayFont::Large,
-                color: Rgb565::YELLOW,
-                position: Point::new(0, 44),
-                text: format!("GPS: {:?}", now),
+                widget: WidgetName::GpsSpeed,
+                text: format!("GPS: {}", sim_gps_speed),
             },
         })
         .unwrap();
     })?;
 
     periodic_timer.every(Duration::from_secs(5))?;
+
+    Ok(periodic_timer)
+}
+
+fn wind_signal_sim_timer(tx: std::sync::mpsc::Sender<SysLoopMsg>) -> Result<EspTimer, EspError> {
+    let periodic_timer = EspTimerService::new()?.timer(move || {
+        let random_number = unsafe { esp_idf_sys::esp_random() };
+        let sim_wind_speed: u32 = random_number % (33 - 15 + 1) + 15;
+
+        tx.send(SysLoopMsg::DisplayMsg {
+            cmd: DisplayCmd {
+                widget: WidgetName::WindSpeed,
+                text: format!("Win: {}", sim_wind_speed),
+            },
+        })
+        .unwrap();
+    })?;
+
+    periodic_timer.every(Duration::from_secs(6))?;
 
     Ok(periodic_timer)
 }

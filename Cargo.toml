@@ -29,6 +29,7 @@ tft = [
 
 [dependencies]
 embedded-graphics = { version = "0.7.1", optional = true }
+embedded-graphics-core = "0.3.3"
 heapless = "0.7"
 #futures = { version = "0.3", features = ["async-await"] }
 embedded-hal = { git = "https://github.com/rust-embedded/embedded-hal", tag = "v1.0.0-alpha.9" }
