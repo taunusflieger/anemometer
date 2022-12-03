@@ -1,12 +1,15 @@
+use crate::gps_mtk3339::gps;
+use crate::gps_mtk3339::gps::Mtk3339;
 use crate::screen::anemometer_screen::LayoutManager;
 use crate::web_server::url_handler;
 use core::mem;
-use core::str;
+//use core::num::dec2flt::float;
+//use core::str;
 use embedded_graphics::draw_target::DrawTarget;
 use embedded_graphics::pixelcolor::Rgb565;
 use embedded_graphics::prelude::*;
-
 use embedded_svc::wifi::{self, AuthMethod, ClientConfiguration};
+use esp_idf_hal::gpio;
 use esp_idf_hal::gpio::*;
 
 use esp_idf_svc::http::server::Configuration;
@@ -19,16 +22,18 @@ use esp_idf_svc::{
 };
 use esp_idf_sys as _;
 use esp_idf_sys::{self as sys, esp, esp_wifi_set_ps, wifi_ps_type_t_WIFI_PS_NONE};
+use std::str;
 
 use log::info;
+use nmea;
 use smart_leds::{colors::*, RGB8};
 use std::format;
 use std::net::Ipv4Addr;
 use std::sync::mpsc;
 use std::{thread::sleep, time::Duration};
 use sys::EspError;
-
 mod errors;
+mod gps_mtk3339;
 mod lazy_http_server;
 mod neopixel;
 mod peripherals;
@@ -63,6 +68,7 @@ enum SysLoopMsg {
     IpAddressAsquired { ip: Ipv4Addr },
     NeopixelMsg { color: RGB8 },
     DisplayMsg { cmd: DisplayCmd },
+    OtaUpdateStarted,
 }
 
 fn main() -> anyhow::Result<()> {
@@ -135,13 +141,94 @@ fn main() -> anyhow::Result<()> {
     info!("Wifi started");
     wifi.connect()?;
 
+    let tx0 = tx.clone();
     let tx1 = tx.clone();
     let tx2 = tx.clone();
     let tx3 = tx.clone();
-    let tx4 = tx.clone();
+    //let tx4 = tx.clone();
     let tx5 = tx.clone();
-    let _timer1 = gps_signal_sim_timer(tx4);
-    let _timer2 = wind_signal_sim_timer(tx5);
+    //let tx6 = tx.clone();
+
+    info!(" ************** Before UART backgound thread started");
+    let _ = std::thread::Builder::new()
+        .stack_size(16_000)
+        .spawn(move || {
+            info!("GPS Listening for messages");
+            print_stack_remaining_size(16_000);
+            let mut nmea = nmea::Nmea::default();
+            print_stack_remaining_size(16_000);
+
+            info!("Size of NMEA: {}", std::mem::size_of::<nmea::Nmea>());
+
+            info!("Configure GPS receiver");
+            let mut gps = Mtk3339::new(
+                9600,
+                peripherals.gps.uart1,
+                peripherals.gps.tx,
+                peripherals.gps.rx,
+            )
+            .unwrap();
+
+            gps.send_command(gps::PMTK_SET_NMEA_OUTPUT_RMCGGA);
+
+            loop {
+                let s = gps.read_line().unwrap();
+
+                info!("NMEA len:{} raw: {:?}", s.len(), s);
+
+                if s.len() > 0 {
+                    info!("================= NMEA parse");
+                    let res = nmea.parse(s.as_str());
+
+                    match res {
+                        Ok(_res) => {
+                            info!(
+                                "NMEA latetude: {:.6}, longitude: {:.6}",
+                                if nmea.latitude.is_some() {
+                                    nmea.latitude.unwrap() as f32
+                                } else {
+                                    0.
+                                },
+                                if nmea.longitude.is_some() {
+                                    nmea.longitude.unwrap() as f32
+                                } else {
+                                    0.
+                                }
+                            );
+                            info!(
+                                "NMEA speed: {:.1} m/s",
+                                if nmea.speed_over_ground.is_some() {
+                                    nmea.speed_over_ground.unwrap() as f32
+                                } else {
+                                    0.
+                                }
+                            );
+                            let speed = if nmea.speed_over_ground.is_some() {
+                                nmea.speed_over_ground.unwrap() as f32
+                            } else {
+                                0.
+                            };
+
+                            tx.send(SysLoopMsg::DisplayMsg {
+                                cmd: DisplayCmd {
+                                    widget: WidgetName::GpsSpeed,
+                                    text: format!("GPS: {:4.1}", speed),
+                                },
+                            })
+                            .unwrap();
+                        }
+                        Err(e) => info!("******* NEMEA error : {e:?} *******"),
+                    }
+                }
+                esp_idf_hal::delay::FreeRtos::delay_ms(1000);
+            }
+        })
+        .unwrap();
+
+    info!(" ************** After UART backgound thread started");
+
+    //let timer1 = gps_signal_sim_timer(tx4).unwrap();
+    let timer2 = wind_signal_sim_timer(tx5).unwrap();
 
     let _wifi_event_sub = sysloop.subscribe(move |event: &WifiEvent| match event {
         WifiEvent::StaConnected => {
@@ -149,7 +236,7 @@ fn main() -> anyhow::Result<()> {
         }
         WifiEvent::StaDisconnected => {
             info!("******* Received STA Disconnected event");
-            tx.send(SysLoopMsg::WifiDisconnect)
+            tx0.send(SysLoopMsg::WifiDisconnect)
                 .expect("wifi event channel closed");
             if let Err(err) = wifi.connect() {
                 info!("Error calling wifi.connect in wifi reconnect {:?}", err);
@@ -191,6 +278,11 @@ fn main() -> anyhow::Result<()> {
             }
             Ok(SysLoopMsg::NeopixelMsg { color }) => {
                 status_led.write(color)?;
+            }
+            Ok(SysLoopMsg::OtaUpdateStarted) => {
+                info!("OTA Update started - stopping timer and IRQ");
+                //timer1.cancel().unwrap();
+                timer2.cancel().unwrap();
             }
             Ok(SysLoopMsg::WifiDisconnect) => {
                 info!("mpsc loop: WifiDisconnect received");
@@ -241,6 +333,8 @@ fn main() -> anyhow::Result<()> {
                 if let Err(err) =
                     s.fn_handler("/api/ota", embedded_svc::http::Method::Post, move |req| {
                         tx4.send(SysLoopMsg::NeopixelMsg { color: BLUE })?;
+                        tx4.send(SysLoopMsg::OtaUpdateStarted)?;
+                        esp_idf_hal::delay::FreeRtos::delay_ms(100);
                         url_handler::ota_update_handler(req)
                     })
                 {
@@ -289,6 +383,7 @@ fn turn_backlight_on(p: AnyOutputPin) {
     mem::forget(backlight); // TODO: For now
 }
 
+#[allow(dead_code)]
 fn gps_signal_sim_timer(tx: std::sync::mpsc::Sender<SysLoopMsg>) -> Result<EspTimer, EspError> {
     let periodic_timer = EspTimerService::new()?.timer(move || {
         let random_number = unsafe { esp_idf_sys::esp_random() };
@@ -325,4 +420,10 @@ fn wind_signal_sim_timer(tx: std::sync::mpsc::Sender<SysLoopMsg>) -> Result<EspT
     periodic_timer.every(Duration::from_secs(6))?;
 
     Ok(periodic_timer)
+}
+
+fn print_stack_remaining_size(stack_size: u32) {
+    let stack = unsafe { esp_idf_sys::uxTaskGetStackHighWaterMark(core::ptr::null_mut()) };
+    let left = stack_size - stack;
+    info!("stack use high water mark {left}/{stack_size}");
 }

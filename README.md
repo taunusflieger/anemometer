@@ -1,9 +1,10 @@
 # ESP32-C3 / S3 Espressif IDF OTA Experiment
 [![CI](https://github.com/taunusflieger/anemometer/actions/workflows/ci.yml/badge.svg)](https://github.com/taunusflieger/anemometer/actions/workflows/ci.yml)
 
+
 ## About
 
-This experiment uses IDF OTA functionality in Rust on an ESP32-C3-Rust Board
+This experiment uses IDF OTA functionality in Rust on an Adafruit ESP32-S3 TFT Board
 
 This is WIP - should lead to a sensor node for an anemometer. The anemometer needs to be calibrated. This will be done by moving (driving) the anemometer an comparing the rotation speed with parallel recorded GPS signal.
 
@@ -36,9 +37,6 @@ This is WIP - should lead to a sensor node for an anemometer. The anemometer nee
 
 The current OTA code is inspired by https://github.com/bakery/rust-esp32-std-demo/tree/feature/ota-updates
 
-
-
-
 ## Preparation
 
 First copy `cfg.toml.example` to `cfg.toml` and configure SSID and PWD of your WiFi access point.
@@ -52,9 +50,6 @@ build and flash the solution
 
 Change the version number in `Cargo.toml` and in `release.json` to `0.2.0`
 
-
-
-
 ## Run
 
 Run `start_ws.py` in a separate terminal (in the project directory). 
@@ -67,5 +62,18 @@ Now it will download `firmware.bin` and flash it. After that it will set the OTA
 In this experiment the reset isn't done automatically. Reset the ESP32-C3 and see the new version boot.
 The new version will see there is no later version online to flash.
 
-### Future plans
-* Support for Adafruit [Ultimate GPS featherwing](https://learn.adafruit.com/adafruit-ultimate-gps-featherwing) to support the calibration process for the wind speed parameters
+## Todo List
+* Support for Adafruit [Ultimate GPS FeatherWing](https://learn.adafruit.com/adafruit-ultimate-gps-featherwing) to support the calibration process for the wind speed parameters. This is only required for the calibration use-case.
+* Support for Aadfruit [Adalogger FeatherWing](https://learn.adafruit.com/adafruit-adalogger-featherwing) to log wind speed and GPS data. Interface through [Embedded SD/MMC](https://github.com/rust-embedded-community/embedded-sdmmc-rs). This is only required for the calibration use-case.
+* UI for OTA update
+
+## License
+
+Licensed under either of
+
+- Apache License, Version 2.0 ([LICENSE-APACHE](LICENSE-APACHE) or
+  http://www.apache.org/licenses/LICENSE-2.0)
+
+- MIT license ([LICENSE-MIT](LICENSE-MIT) or http://opensource.org/licenses/MIT)
+
+at your option.

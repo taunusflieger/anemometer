@@ -22,7 +22,7 @@ dependencies = [
 
 [[package]]
 name = "anemometer"
-version = "0.4.2"
+version = "0.4.3"
 dependencies = [
  "anyhow",
  "display-interface",
@@ -39,6 +39,7 @@ dependencies = [
  "heapless",
  "log",
  "mipidsi",
+ "nmea",
  "profont",
  "smart-leds",
  "toml-cfg",
@@ -50,6 +51,12 @@ name = "anyhow"
 version = "1.0.66"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "216261ddc8289130e551ddcd5ce8a064710c0d064a4d2895c67151c92b5443f6"
+
+[[package]]
+name = "arrayvec"
+version = "0.7.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "8da52d66c7071e2e3fa2a1e5c6d088fec47b593032b254f5e980de8ea54454d6"
 
 [[package]]
 name = "async-task"
@@ -1190,6 +1197,17 @@ name = "nb"
 version = "1.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "546c37ac5d9e56f55e73b677106873d9d9f5190605e41a856503623648488cae"
+
+[[package]]
+name = "nmea"
+version = "0.4.0"
+dependencies = [
+ "arrayvec",
+ "chrono",
+ "heapless",
+ "nom",
+ "num-traits",
+]
 
 [[package]]
 name = "no-std-net"

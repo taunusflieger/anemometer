@@ -262,6 +262,7 @@ pub mod anemometer_screen {
             Ok(())
         }
 
+        #[allow(dead_code)]
         pub fn draw_demo_screen<D>(&self, target: &mut D) -> Result<(), D::Error>
         where
             D: Flushable<Color = Rgb565>,

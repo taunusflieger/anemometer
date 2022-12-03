@@ -3,10 +3,11 @@ use esp_idf_hal::modem::Modem;
 use esp_idf_hal::peripherals::Peripherals;
 use esp_idf_hal::rmt::CHANNEL0;
 use esp_idf_hal::spi::*;
-
+use esp_idf_hal::uart::*;
 pub struct SystemPeripherals<SPI, VDD, NEOPIXELPIN, CHANNEL> {
     pub neopixel: NeoPixelPeripherals<NEOPIXELPIN, CHANNEL>,
     pub display: DisplaySpiPeripherals<SPI, VDD>,
+    pub gps: GpsPeripherals,
     pub display_backlight: AnyOutputPin,
     pub modem: Modem,
     // pub display_rst: AnyOutputPin,
@@ -39,6 +40,11 @@ impl SystemPeripherals<SPI2, Gpio21, Gpio33, CHANNEL0> {
                 cs: peripherals.pins.gpio7.into(),
                 vdd: peripherals.pins.gpio21,
             },
+            gps: GpsPeripherals {
+                tx: peripherals.pins.gpio1.into(),
+                rx: peripherals.pins.gpio2.into(),
+                uart1: peripherals.uart1,
+            },
             modem: peripherals.modem,
             display_backlight: peripherals.pins.gpio45.into(),
         }
@@ -62,4 +68,10 @@ pub struct DisplaySpiPeripherals<SPI, VDD> {
     pub sdo: AnyOutputPin,
     pub cs: AnyOutputPin,
     pub vdd: VDD,
+}
+
+pub struct GpsPeripherals {
+    pub tx: AnyOutputPin,
+    pub rx: AnyInputPin,
+    pub uart1: UART1,
 }
