@@ -1201,6 +1201,7 @@ checksum = "546c37ac5d9e56f55e73b677106873d9d9f5190605e41a856503623648488cae"
 [[package]]
 name = "nmea"
 version = "0.4.0"
+source = "git+https://github.com/AeroRust/nmea#379d7a25cc1d22277838d922c9b68f6fc474b4bc"
 dependencies = [
  "arrayvec",
  "chrono",
