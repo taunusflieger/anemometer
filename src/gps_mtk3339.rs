@@ -113,6 +113,10 @@ pub mod gps {
     pub const PGCMD_NOANTENNA: &str = "$PGCMD,33,0*6D";
     ///< don'
 
+    pub const PMTK_GPS_ONLY: &str = "$PMTK353,1,0*36";
+    pub const PMTK_GLONASS_ONLY: &str = "$PMTK353,0,1*36";
+    pub const PMTK_GPS_GLONASS: &str = "$PMTK353,1,1*37";
+
     pub struct Mtk3339<'d> {
         pub uart: UartDriver<'d>,
         nmea_sentence: String,
@@ -189,6 +193,43 @@ pub mod gps {
             esp_idf_hal::delay::FreeRtos::delay_ms(100);
             self.uart.write(cmd.as_bytes()).unwrap();
             self.uart.write(&CRLF).unwrap();
+        }
+
+        // The MTK3339 sends frequent RMC sentences which are not valid.
+        // The contain unclear data between field 6 and field 7. So far
+        // it was not possible to find documentation of this behavior.
+        // As a hack, this function removes the data between field 6 und 7
+        // and creates a valid RMC sentence
+        pub fn fix_rmc_sentence(s: String) -> String {
+            let v: Vec<_> = s.match_indices(",").map(|(i, _)| i).collect();
+            if s.contains("RMC") && v.len() > 12 {
+                let mut left = String::new();
+                let mut right = String::new();
+                let mut crc = 0;
+
+                let l = v[6];
+                if let Some(part) = s.get(0..l + 1) {
+                    left = part.to_string();
+                }
+                let r = v[v.len() - 6];
+                if let Some(part) = s.get(r + 1..s.len()) {
+                    right = part.to_string();
+                }
+                left.push_str(right.as_str());
+
+                for (_, &item) in left[1..left.len() - 3].as_bytes().iter().enumerate() {
+                    crc ^= item;
+                }
+
+                left.replace_range(
+                    left.len() - 2..left.len(),
+                    hex::encode_upper(vec![crc]).as_str(),
+                );
+
+                left
+            } else {
+                s
+            }
         }
 
         pub fn process_gps_input(input_buffer: &mut [u8]) -> Option<String> {

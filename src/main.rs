@@ -170,9 +170,11 @@ fn main() -> anyhow::Result<()> {
             .unwrap();
 
             gps.send_command(gps::PMTK_SET_NMEA_OUTPUT_RMCGGA);
+            gps.send_command(gps::PMTK_GPS_GLONASS);
 
             loop {
-                let s = gps.read_line().unwrap();
+                let mut s = gps.read_line().unwrap();
+                s = gps::Mtk3339::fix_rmc_sentence(s);
 
                 info!("NMEA len:{} raw: {:?}", s.len(), s);
 
