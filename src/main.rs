@@ -32,13 +32,13 @@ use std::net::Ipv4Addr;
 use std::sync::mpsc;
 use std::{thread::sleep, time::Duration};
 use sys::EspError;
+mod display;
 mod errors;
 mod gps_mtk3339;
 mod lazy_http_server;
 mod neopixel;
 mod peripherals;
 mod screen;
-mod services;
 mod web_server;
 
 sys::esp_app_desc!();
@@ -83,7 +83,7 @@ fn main() -> anyhow::Result<()> {
     status_led.write(DARK_ORANGE)?;
 
     let display_peripherals = peripherals.display;
-    let mut display = services::display(display_peripherals).unwrap();
+    let mut display = display::display(display_peripherals).unwrap();
     let backlight = peripherals.display_backlight;
 
     display.clear(Rgb565::BLACK).unwrap();
