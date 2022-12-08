@@ -200,7 +200,8 @@ fn main() -> anyhow::Result<()> {
                             info!(
                                 "NMEA speed: {:.1} m/s",
                                 if nmea.speed_over_ground.is_some() {
-                                    nmea.speed_over_ground.unwrap() as f32
+                                    // kn/h into km/h
+                                    (nmea.speed_over_ground.unwrap() as f32) * 1.852_f32
                                 } else {
                                     0.
                                 }
