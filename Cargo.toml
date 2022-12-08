@@ -40,7 +40,7 @@ heapless = "0.7"
 #futures = { version = "0.3", features = ["async-await"] }
 embedded-hal = { git = "https://github.com/rust-embedded/embedded-hal", tag = "v1.0.0-alpha.9" }
 embedded-svc = { verion = "0.23", features = ["nightly", "experimental"] }
-esp-idf-sys = { version = "0.31.11", features = ["binstart"] }
+esp-idf-sys = { version = "0.31.12", features = ["binstart"] }
 esp-idf-svc = { version = "0.43", features = ["nightly", "experimental"] }
 esp-idf-hal = { version = "0.39", features = [] }
 display-interface = { version = "0.4", optional = true }
@@ -61,7 +61,7 @@ log = { version = "0.4", features = [
 
 
 [build-dependencies]
-embuild = "0.30"
+embuild = "0.30.5"
 anyhow = "1"
 
 [package.metadata.espflash]

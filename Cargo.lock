@@ -612,9 +612,9 @@ dependencies = [
 
 [[package]]
 name = "embuild"
-version = "0.30.4"
+version = "0.30.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c6ca66d283ba92dc33ce461ba27bb5085a769dd740bad3f66e60e70926b34d05"
+checksum = "880ed2a045c218d4c5d57e757991385642b94082e7b216266b127c0b6cadc5ba"
 dependencies = [
  "anyhow",
  "bindgen",
@@ -716,9 +716,9 @@ dependencies = [
 
 [[package]]
 name = "esp-idf-sys"
-version = "0.31.11"
+version = "0.31.12"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "07c681fa218e5ac355e1290cdaebba79985731e41af44e5c1cf263b3a7177753"
+checksum = "62ae3c84bab6d67dfefa5c65fa2c65834adb169b7749ae996c1a43ad61363601"
 dependencies = [
  "anyhow",
  "bindgen",
