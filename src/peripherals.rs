@@ -4,18 +4,18 @@ use esp_idf_hal::peripherals::Peripherals;
 use esp_idf_hal::rmt::CHANNEL0;
 use esp_idf_hal::spi::*;
 use esp_idf_hal::uart::*;
-pub struct SystemPeripherals<'d, VDD, NEOPIXELPIN, CHANNEL> {
+pub struct SystemPeripherals<VDD, NEOPIXELPIN, CHANNEL> {
     pub neopixel: NeoPixelPeripherals<NEOPIXELPIN, CHANNEL>,
     pub display: DisplaySpiPeripherals<VDD>,
     pub gps: GpsPeripherals,
-    pub spi_bus: SpiBusPeripherals<'d>,
+    pub spi_bus: SpiBusPeripherals,
     pub display_backlight: AnyOutputPin,
     pub modem: Modem,
     // pub display_rst: AnyOutputPin,
 }
 
 //#[cfg(any(esp32s2, esp32s3))]
-impl SystemPeripherals<'_, Gpio21, Gpio33, CHANNEL0> {
+impl SystemPeripherals<Gpio21, Gpio33, CHANNEL0> {
     pub fn take() -> Self {
         let peripherals = Peripherals::take().unwrap();
 
@@ -83,6 +83,6 @@ pub struct GpsPeripherals {
     pub uart1: UART1,
 }
 
-pub struct SpiBusPeripherals<'d> {
-    pub driver: std::rc::Rc<SpiDriver<'d>>,
+pub struct SpiBusPeripherals {
+    pub driver: std::rc::Rc<SpiDriver<'static>>,
 }
