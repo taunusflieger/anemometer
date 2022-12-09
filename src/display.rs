@@ -32,12 +32,10 @@ pub fn display(
     vdd.set_high()?;
     mem::forget(vdd);
 
-    let baudrate = 80.MHz().into();
-
     let spi_display = SpiDeviceDriver::new(
         spi_peripherals.driver,
         Some(display_peripherals.cs),
-        &SpiConfig::new().baudrate(baudrate),
+        &SpiConfig::new().baudrate(80.MHz().into()),
     )
     .unwrap();
 
