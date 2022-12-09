@@ -1,5 +1,5 @@
 use crate::errors::*;
-use crate::peripherals::DisplaySpiPeripherals;
+use crate::peripherals::{DisplaySpiPeripherals, SpiBusPeripherals};
 use core::fmt::Debug;
 use core::mem;
 use esp_idf_hal::prelude::*;
@@ -23,9 +23,9 @@ use mipidsi::{Builder, Orientation};
 #[cfg(feature = "tft")]
 pub fn display(
     display_peripherals: DisplaySpiPeripherals<
-        impl Peripheral<P = impl SpiAnyPins + 'static> + 'static,
         impl Peripheral<P = impl OutputPin + 'static> + 'static,
     >,
+    spi_peripherals: SpiBusPeripherals,
 ) -> Result<impl Flushable<Color = Rgb565, Error = impl Debug + 'static> + 'static, InitError> {
     // power ST7789
     let mut vdd = PinDriver::output(display_peripherals.vdd)?;
@@ -34,12 +34,8 @@ pub fn display(
 
     let baudrate = 80.MHz().into();
 
-    let spi_display = SpiDeviceDriver::new_single(
-        display_peripherals.spi,
-        display_peripherals.sclk,
-        display_peripherals.sdo,
-        Option::<Gpio21>::None,
-        Dma::Disabled,
+    let spi_display = SpiDeviceDriver::new(
+        spi_peripherals.driver,
         Some(display_peripherals.cs),
         &SpiConfig::new().baudrate(baudrate),
     )

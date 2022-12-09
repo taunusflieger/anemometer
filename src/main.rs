@@ -83,7 +83,8 @@ fn main() -> anyhow::Result<()> {
     status_led.write(DARK_ORANGE)?;
 
     let display_peripherals = peripherals.display;
-    let mut display = display::display(display_peripherals).unwrap();
+    let spi_peripherals = peripherals.spi_bus;
+    let mut display = display::display(display_peripherals, spi_peripherals).unwrap();
     let backlight = peripherals.display_backlight;
 
     display.clear(Rgb565::BLACK).unwrap();

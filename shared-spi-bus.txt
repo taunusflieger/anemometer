@@ -1,0 +1,11 @@
+I'm struggeling to use the SPI bus in a shared mode with a display device and a microSD device.
+
+The display_interface_spi::SPIInterface takes ownership of the SPI object, preventing sharing it with another device.
+
+This issue has been reported here https://github.com/almindor/st7789/issues/20 (different HAL)
+
+A solution has been presented here https://github.com/rust-embedded/embedded-hal/pull/351 which seperates the concepts of a "SPI bus" and "SPI device" this goes beyond the borrow concept found in the ESP HAL.
+The borrow concept does not address the issue with the display_interface_spi::SPIInterface taking ownership of the SPI object.
+
+As far as I understand the current split into SpiDriver and SpiDevice is not the same as the split into SpiBus and SpiDevice implemented in embedded-hal
+https://github.com/rust-embedded/embedded-hal/blob/master/embedded-hal/src/spi.rs
