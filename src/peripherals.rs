@@ -12,7 +12,6 @@ pub struct SystemPeripherals<VDD, NEOPIXELPIN, CHANNEL> {
     pub spi_bus: SpiBusPeripherals,
     pub display_backlight: AnyOutputPin,
     pub modem: Modem,
-    // pub display_rst: AnyOutputPin,
 }
 
 //#[cfg(any(esp32s2, esp32s3))]

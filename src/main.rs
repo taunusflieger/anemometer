@@ -70,6 +70,7 @@ enum SysLoopMsg {
     NeopixelMsg { color: RGB8 },
     DisplayMsg { cmd: DisplayCmd },
     OtaUpdateStarted,
+    NmeaData { data: String },
 }
 
 fn main() -> anyhow::Result<()> {
@@ -87,10 +88,8 @@ fn main() -> anyhow::Result<()> {
     let spi_bus_driver = peripherals.spi_bus.driver;
     let sdmmc_peripherals = peripherals.sdcard;
 
-    // *
-    // * Test only to access the sd card
-    // *
-    sdmmc::sd_test(sdmmc_peripherals, Rc::clone(&spi_bus_driver));
+    let mut sd_card =
+        sdmmc::sd_storage::SdCard::new(sdmmc_peripherals, Rc::clone(&spi_bus_driver))?;
 
     let mut display = display::display(display_peripherals, Rc::clone(&spi_bus_driver)).unwrap();
     let backlight = peripherals.display_backlight;
@@ -188,6 +187,10 @@ fn main() -> anyhow::Result<()> {
                 info!("NMEA len:{} raw: {:?}", s.len(), s);
 
                 if s.len() > 0 {
+                    tx.send(SysLoopMsg::NmeaData {
+                        data: format!("{}\n", s),
+                    })
+                    .unwrap();
                     info!("================= NMEA parse");
                     let res = nmea.parse(s.as_str());
 
@@ -279,6 +282,9 @@ fn main() -> anyhow::Result<()> {
                             .unwrap();
                     }
                 };
+            }
+            Ok(SysLoopMsg::NmeaData { data }) => {
+                sd_card.write(data);
             }
             Ok(SysLoopMsg::NeopixelMsg { color }) => {
                 status_led.write(color)?;
