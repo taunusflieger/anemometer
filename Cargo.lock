@@ -32,7 +32,7 @@ dependencies = [
  "embedded-hal 1.0.0-alpha.9 (git+https://github.com/rust-embedded/embedded-hal?tag=v1.0.0-alpha.9)",
  "embedded-sdmmc",
  "embedded-svc",
- "embuild",
+ "embuild 0.31.0",
  "esp-idf-hal",
  "esp-idf-svc",
  "esp-idf-sys",
@@ -646,6 +646,20 @@ dependencies = [
 ]
 
 [[package]]
+name = "embuild"
+version = "0.31.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "65388407a519276cd9aa94291380649d4cedbe8cf566d40f436f7a1ea9b5f8fe"
+dependencies = [
+ "anyhow",
+ "bitflags",
+ "filetime",
+ "log",
+ "shlex",
+ "thiserror",
+]
+
+[[package]]
 name = "enumset"
 version = "1.0.12"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -691,9 +705,9 @@ dependencies = [
 
 [[package]]
 name = "esp-idf-hal"
-version = "0.39.3"
+version = "0.39.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ef5433be40513a14f26ff57740ed56f73f2f14a906d2199edede80103957c193"
+checksum = "01c13e8b64257f42eab465efcc39bdbad9e1dd599f67cf978bbffdf0ee84ac75"
 dependencies = [
  "anyhow",
  "edge-executor",
@@ -701,7 +715,7 @@ dependencies = [
  "embedded-hal 0.2.7",
  "embedded-hal 1.0.0-alpha.9 (registry+https://github.com/rust-lang/crates.io-index)",
  "embedded-hal-nb",
- "embuild",
+ "embuild 0.30.5",
  "esp-idf-sys",
  "heapless",
  "nb 1.0.0",
@@ -709,14 +723,14 @@ dependencies = [
 
 [[package]]
 name = "esp-idf-svc"
-version = "0.43.4"
+version = "0.43.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d3fe96ab0a35b28e31853c40e8a820590f0a7a01e595e74fcd3097b0fb041c24"
+checksum = "64c06a71ac4634bbc9c8f113050d96b9e84e0e8c8be1e2c0f187463f4fbe482a"
 dependencies = [
  "anyhow",
  "cstr_core",
  "embedded-svc",
- "embuild",
+ "embuild 0.30.5",
  "enumset",
  "esp-idf-hal",
  "esp-idf-sys",
@@ -736,7 +750,7 @@ dependencies = [
  "build-time",
  "cargo_metadata",
  "const_format",
- "embuild",
+ "embuild 0.30.5",
  "envy",
  "libc",
  "regex",

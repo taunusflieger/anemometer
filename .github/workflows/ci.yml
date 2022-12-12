@@ -24,7 +24,7 @@ jobs:
 
     steps:
       - name: Setup | Checkout
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
 
       # fixes missing libclang error
       - name: Setup | libncurses5
@@ -43,7 +43,7 @@ jobs:
         if: matrix.target == 'riscv32imc-esp-espidf'
 
       - name: Install Rust for Xtensa
-        uses: esp-rs/xtensa-toolchain@v1.3
+        uses: esp-rs/xtensa-toolchain@v1.4
         with:
           default: true
           version: "1.65.0"
