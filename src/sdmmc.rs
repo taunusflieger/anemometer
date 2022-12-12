@@ -7,7 +7,7 @@ pub mod sd_storage {
     use esp_idf_hal::spi::config::Duplex;
     use esp_idf_hal::spi::*;
     use esp_idf_sys::*;
-    use log::info;
+    use log::{debug, info, warn};
     use std::rc::Rc;
 
     const FILE_TO_CREATE: &'static str = "GpsLog.txt";
@@ -62,13 +62,13 @@ pub mod sd_storage {
                         5,
                         5,
                     > = embedded_sdmmc::Controller::new(block, SdMmcClock);
-                    info!("OK!");
-                    info!("Card size...");
+                    debug!("OK!");
+                    debug!("Card size...");
                     match controller.device().card_size_bytes() {
-                        Ok(size) => info!("{}", size),
-                        Err(e) => info!("Err: {:?}", e),
+                        Ok(size) => debug!("{}", size),
+                        Err(e) => warn!("Err: {:?}", e),
                     }
-                    info!("Volume 0...");
+                    debug!("Volume 0...");
 
                     let mut volume = match controller.get_volume(embedded_sdmmc::VolumeIdx(0)) {
                         Ok(v) => v,
@@ -80,7 +80,7 @@ pub mod sd_storage {
                         Err(e) => panic!("Err: {:?}", e),
                     };
 
-                    info!("creating file {}", FILE_TO_CREATE);
+                    debug!("creating file {}", FILE_TO_CREATE);
                     let mut f = match controller.open_file_in_dir(
                         &mut volume,
                         &root_dir,
@@ -98,11 +98,11 @@ pub mod sd_storage {
                     };
                     info!("Bytes written {}", num_written);
                     match controller.close_file(&volume, f) {
-                        Ok(_) => info!("file closed"),
+                        Ok(_) => debug!("file closed"),
                         Err(e) => panic!("Err: {:?}", e),
                     };
                 }
-                Err(e) => info!("Error acquire SPI bus {:?}", e),
+                Err(e) => warn!("Error acquire SPI bus {:?}", e),
             };
         }
     }
