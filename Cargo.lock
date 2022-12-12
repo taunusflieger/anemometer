@@ -691,9 +691,9 @@ dependencies = [
 
 [[package]]
 name = "esp-idf-hal"
-version = "0.39.3"
+version = "0.39.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ef5433be40513a14f26ff57740ed56f73f2f14a906d2199edede80103957c193"
+checksum = "01c13e8b64257f42eab465efcc39bdbad9e1dd599f67cf978bbffdf0ee84ac75"
 dependencies = [
  "anyhow",
  "edge-executor",
