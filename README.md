@@ -34,6 +34,8 @@ This is WIP - should lead to a sensor node for an anemometer. The anemometer nee
 - HTTP Server
 - OTA
 - Support for Adafruit Feather ESP32-S3 TFT display controller ST7789 (similar to ST7735). Implmentation approach uses [mipidsi driver](https://github.com/almindor/mipidsi) 
+- Output of GPS speed on TFT
+- Logging of GPS NMEA sentences to SD card
 
 The current OTA code is inspired by https://github.com/bakery/rust-esp32-std-demo/tree/feature/ota-updates
 
@@ -63,9 +65,10 @@ In this experiment the reset isn't done automatically. Reset the ESP32-C3 and se
 The new version will see there is no later version online to flash.
 
 ## Todo List
-* Support for Adafruit [Ultimate GPS FeatherWing](https://learn.adafruit.com/adafruit-ultimate-gps-featherwing) to support the calibration process for the wind speed parameters. This is only required for the calibration use-case.
-* Support for Aadfruit [Adalogger FeatherWing](https://learn.adafruit.com/adafruit-adalogger-featherwing) to log wind speed and GPS data. Interface through [Embedded SD/MMC](https://github.com/rust-embedded-community/embedded-sdmmc-rs). This is only required for the calibration use-case.
-* UI for OTA update
+- [x] Support for Adafruit [Ultimate GPS FeatherWing](https://learn.adafruit.com/adafruit-ultimate-gps-featherwing) to support the calibration process for the wind speed parameters. This is only required for the calibration use-case.
+- [x] Support for Aadfruit [Adalogger FeatherWing](https://learn.adafruit.com/adafruit-adalogger-featherwing) to log wind speed and GPS data. Interface through [Embedded SD/MMC](https://github.com/rust-embedded-community/embedded-sdmmc-rs). This is only required for the calibration use-case.
+- [ ] ISR & event counting for windspeed sensor
+- [ ] UI for OTA update
 
 ## License
 
