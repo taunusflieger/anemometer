@@ -30,6 +30,7 @@ dependencies = [
  "embedded-graphics",
  "embedded-graphics-core",
  "embedded-hal 1.0.0-alpha.9 (git+https://github.com/rust-embedded/embedded-hal?tag=v1.0.0-alpha.9)",
+ "embedded-sdmmc",
  "embedded-svc",
  "embuild",
  "esp-idf-hal",
@@ -589,6 +590,16 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "33dfba9e6c113f2fd8537c943780a7345945e66c86972e356b1152e19481bcf5"
 dependencies = [
  "futures",
+]
+
+[[package]]
+name = "embedded-sdmmc"
+version = "0.4.0"
+source = "git+https://github.com/rust-embedded-community/embedded-sdmmc-rs.git#a33b10f6f1c25df663290b90429f4e1fd1c91cc0"
+dependencies = [
+ "byteorder",
+ "embedded-hal 0.2.7",
+ "log",
 ]
 
 [[package]]

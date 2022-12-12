@@ -22,13 +22,13 @@ use esp_idf_svc::{
 };
 use esp_idf_sys as _;
 use esp_idf_sys::{self as sys, esp, esp_wifi_set_ps, wifi_ps_type_t_WIFI_PS_NONE};
-use std::str;
-
 use log::info;
 use nmea;
 use smart_leds::{colors::*, RGB8};
 use std::format;
 use std::net::Ipv4Addr;
+use std::rc::Rc;
+use std::str;
 use std::sync::mpsc;
 use std::{thread::sleep, time::Duration};
 use sys::EspError;
@@ -39,6 +39,7 @@ mod lazy_http_server;
 mod neopixel;
 mod peripherals;
 mod screen;
+mod sdmmc;
 mod web_server;
 
 sys::esp_app_desc!();
@@ -83,8 +84,15 @@ fn main() -> anyhow::Result<()> {
     status_led.write(DARK_ORANGE)?;
 
     let display_peripherals = peripherals.display;
-    let spi_peripherals = peripherals.spi_bus;
-    let mut display = display::display(display_peripherals, spi_peripherals).unwrap();
+    let spi_bus_driver = peripherals.spi_bus.driver;
+    let sdmmc_peripherals = peripherals.sdcard;
+
+    // *
+    // * Test only to access the sd card
+    // *
+    sdmmc::sd_test(sdmmc_peripherals, Rc::clone(&spi_bus_driver));
+
+    let mut display = display::display(display_peripherals, Rc::clone(&spi_bus_driver)).unwrap();
     let backlight = peripherals.display_backlight;
 
     display.clear(Rgb565::BLACK).unwrap();

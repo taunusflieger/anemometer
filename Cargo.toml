@@ -54,6 +54,7 @@ shared-bus = "0.2.5"
 toml-cfg = "0.1"
 profont = { version = "0.6.1", optional = true }
 url = "2"
+embedded-sdmmc = { git = "https://github.com/rust-embedded-community/embedded-sdmmc-rs.git" }
 log = { version = "0.4", features = [
     "max_level_debug",
     "release_max_level_debug",

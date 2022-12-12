@@ -1,5 +1,5 @@
 use crate::errors::*;
-use crate::peripherals::{DisplaySpiPeripherals, SpiBusPeripherals};
+use crate::peripherals::DisplaySpiPeripherals;
 use core::fmt::Debug;
 use core::mem;
 use esp_idf_hal::prelude::*;
@@ -25,7 +25,7 @@ pub fn display(
     display_peripherals: DisplaySpiPeripherals<
         impl Peripheral<P = impl OutputPin + 'static> + 'static,
     >,
-    spi_peripherals: SpiBusPeripherals,
+    driver: std::rc::Rc<SpiDriver<'static>>,
 ) -> Result<impl Flushable<Color = Rgb565, Error = impl Debug + 'static> + 'static, InitError> {
     // power ST7789
     let mut vdd = PinDriver::output(display_peripherals.vdd)?;
@@ -33,9 +33,9 @@ pub fn display(
     mem::forget(vdd);
 
     let spi_display = SpiDeviceDriver::new(
-        spi_peripherals.driver,
+        driver,
         Some(display_peripherals.cs),
-        &SpiConfig::new().baudrate(80.MHz().into()),
+        &SpiConfig::new().baudrate(10.MHz().into()),
     )
     .unwrap();
 

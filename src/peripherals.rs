@@ -7,6 +7,7 @@ use esp_idf_hal::uart::*;
 pub struct SystemPeripherals<VDD, NEOPIXELPIN, CHANNEL> {
     pub neopixel: NeoPixelPeripherals<NEOPIXELPIN, CHANNEL>,
     pub display: DisplaySpiPeripherals<VDD>,
+    pub sdcard: MicroSDCardPeripherals,
     pub gps: GpsPeripherals,
     pub spi_bus: SpiBusPeripherals,
     pub display_backlight: AnyOutputPin,
@@ -38,6 +39,9 @@ impl SystemPeripherals<Gpio21, Gpio33, CHANNEL0> {
                 cs: peripherals.pins.gpio7.into(),
                 vdd: peripherals.pins.gpio21,
             },
+            sdcard: MicroSDCardPeripherals {
+                cs: peripherals.pins.gpio10.into(), // TODO: check
+            },
             gps: GpsPeripherals {
                 tx: peripherals.pins.gpio1.into(),
                 rx: peripherals.pins.gpio2.into(),
@@ -49,7 +53,7 @@ impl SystemPeripherals<Gpio21, Gpio33, CHANNEL0> {
                         peripherals.spi2,
                         peripherals.pins.gpio36,
                         peripherals.pins.gpio35,
-                        Option::<Gpio21>::None,
+                        Some(peripherals.pins.gpio37),
                         Dma::Disabled,
                     )
                     .unwrap(),
@@ -85,4 +89,8 @@ pub struct GpsPeripherals {
 
 pub struct SpiBusPeripherals {
     pub driver: std::rc::Rc<SpiDriver<'static>>,
+}
+
+pub struct MicroSDCardPeripherals {
+    pub cs: AnyOutputPin,
 }
