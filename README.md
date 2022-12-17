@@ -16,7 +16,7 @@ This is WIP - should lead to a sensor node for an anemometer. The anemometer nee
 - MQTT transport of sensor data
 - OTA update
 - NeoPixel for Wifi connection status indication
-- IRQ routine to record anemometer rotation pulses
+- IRQ routine to record anemometer rotation pulses (not decided if this will be ESP32-S3 and ULP or ESP32-C3 and standard IRQ based)
 
 ### Functional
 - HTML page for OTA update
@@ -67,8 +67,13 @@ The new version will see there is no later version online to flash.
 ## Todo List
 - [x] Support for Adafruit [Ultimate GPS FeatherWing](https://learn.adafruit.com/adafruit-ultimate-gps-featherwing) to support the calibration process for the wind speed parameters. This is only required for the calibration use-case.
 - [x] Support for Aadfruit [Adalogger FeatherWing](https://learn.adafruit.com/adafruit-adalogger-featherwing) to log wind speed and GPS data. Interface through [Embedded SD/MMC](https://github.com/rust-embedded-community/embedded-sdmmc-rs). This is only required for the calibration use-case.
+- [ ] Evaluate pros and cons for using ESP32-S3 vs ESP32-C3 (power consumption, sleep, local web server, OTA needs to be considered)
 - [ ] ISR & event counting for windspeed sensor
 - [ ] UI for OTA update
+- [ ] Fully implement the feature approach to seperate the calibration use case from production use case. The image for calibration is too large to allow OTA. Display, GPS and SD Card are not required for production
+- [ ] Implement MQTT for data ingress to AWS
+- [ ] Implement sleep mode (which one ?)
+- [ ] Implement new UI for the AWS lamda based weather station App
 
 ## License
 
