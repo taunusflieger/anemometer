@@ -29,13 +29,14 @@ dependencies = [
  "display-interface-spi",
  "embedded-graphics",
  "embedded-graphics-core",
- "embedded-hal 1.0.0-alpha.9 (git+https://github.com/rust-embedded/embedded-hal?tag=v1.0.0-alpha.9)",
+ "embedded-hal 1.0.0-alpha.9",
  "embedded-sdmmc",
  "embedded-svc",
  "embuild 0.31.0",
  "esp-idf-hal",
  "esp-idf-svc",
  "esp-idf-sys",
+ "fixed",
  "gfx-xtra",
  "heapless",
  "hex",
@@ -372,6 +373,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "crunchy"
+version = "0.2.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "7a81dae078cea95a014a339291cec439d2f232ebe854a9d672b796c6afafa9b7"
+
+[[package]]
 name = "cstr_core"
 version = "0.2.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -594,12 +601,6 @@ dependencies = [
 [[package]]
 name = "embedded-hal"
 version = "1.0.0-alpha.9"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "129b101ddfee640565f7c07b301a31d95aa21e5acef21a491c307139f5fa4c91"
-
-[[package]]
-name = "embedded-hal"
-version = "1.0.0-alpha.9"
 source = "git+https://github.com/rust-embedded/embedded-hal?tag=v1.0.0-alpha.9#bfb276e9218291de34780d9e2b9231aaf3131139"
 
 [[package]]
@@ -608,7 +609,7 @@ version = "1.0.0-alpha.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "7e0760ec0a3bf76859d5e33f39542af103f157d5b2ecfb00ace56dd461472e3a"
 dependencies = [
- "embedded-hal 1.0.0-alpha.9 (registry+https://github.com/rust-lang/crates.io-index)",
+ "embedded-hal 1.0.0-alpha.9",
  "nb 1.0.0",
 ]
 
@@ -683,10 +684,18 @@ checksum = "65388407a519276cd9aa94291380649d4cedbe8cf566d40f436f7a1ea9b5f8fe"
 dependencies = [
  "anyhow",
  "bitflags",
+ "dirs",
  "filetime",
  "log",
+ "remove_dir_all 0.7.0",
+ "serde",
+ "serde_json",
  "shlex",
+ "strum 0.24.1",
+ "tempfile",
  "thiserror",
+ "which",
+ "xmas-elf",
 ]
 
 [[package]]
@@ -743,7 +752,7 @@ dependencies = [
  "edge-executor",
  "embedded-can",
  "embedded-hal 0.2.7",
- "embedded-hal 1.0.0-alpha.9 (registry+https://github.com/rust-lang/crates.io-index)",
+ "embedded-hal 1.0.0-alpha.9",
  "embedded-hal-nb",
  "embuild 0.30.5",
  "esp-idf-sys",
@@ -807,6 +816,18 @@ dependencies = [
  "libc",
  "redox_syscall",
  "windows-sys",
+]
+
+[[package]]
+name = "fixed"
+version = "1.20.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "418922d2c280b8c68f82699494cc8c48f392233233a9a8b9a48a57a36c0ad0ef"
+dependencies = [
+ "az",
+ "bytemuck",
+ "half",
+ "typenum",
 ]
 
 [[package]]
@@ -946,6 +967,15 @@ dependencies = [
  "bitflags",
  "ignore",
  "walkdir",
+]
+
+[[package]]
+name = "half"
+version = "2.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ad6a9459c9c30b177b925162351f97e7d967c7ea8bab3b8352805327daf45554"
+dependencies = [
+ "crunchy",
 ]
 
 [[package]]
@@ -1801,6 +1831,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "typenum"
+version = "1.16.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "497961ef93d974e23eb6f433eb5fe1b7930b659f06d12dec6fc44a8f554c0bba"
+
+[[package]]
 name = "uncased"
 version = "0.9.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2052,3 +2088,18 @@ name = "windows_x86_64_msvc"
 version = "0.42.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f40009d85759725a34da6d89a94e63d7bdc50a862acf0dbc7c8e488f1edcb6f5"
+
+[[package]]
+name = "xmas-elf"
+version = "0.8.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "8d29b4d8e7beaceb4e77447ba941a7600d23d0319ab52da0461abea214832d5a"
+dependencies = [
+ "zero",
+]
+
+[[package]]
+name = "zero"
+version = "0.1.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "2fe21bcc34ca7fe6dd56cc2cb1261ea59d6b93620215aefb5ea6032265527784"

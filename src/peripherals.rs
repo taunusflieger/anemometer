@@ -9,6 +9,7 @@ pub struct SystemPeripherals<VDD, NEOPIXELPIN, CHANNEL> {
     pub display: DisplaySpiPeripherals<VDD>,
     pub sdcard: MicroSDCardPeripherals,
     pub gps: GpsPeripherals,
+    pub pulse_counter: AnemometerPulseCounterPeripherals,
     pub spi_bus: SpiBusPeripherals,
     pub display_backlight: AnyOutputPin,
     pub modem: Modem,
@@ -45,6 +46,9 @@ impl SystemPeripherals<Gpio21, Gpio33, CHANNEL0> {
                 tx: peripherals.pins.gpio1.into(),
                 rx: peripherals.pins.gpio2.into(),
                 uart1: peripherals.uart1,
+            },
+            pulse_counter: AnemometerPulseCounterPeripherals {
+                pulse: peripherals.pins.gpio5.into(),
             },
             spi_bus: SpiBusPeripherals {
                 driver: std::rc::Rc::new(
@@ -92,4 +96,8 @@ pub struct SpiBusPeripherals {
 
 pub struct MicroSDCardPeripherals {
     pub cs: AnyOutputPin,
+}
+
+pub struct AnemometerPulseCounterPeripherals {
+    pub pulse: AnyInputPin,
 }

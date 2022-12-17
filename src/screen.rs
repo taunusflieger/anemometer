@@ -255,7 +255,7 @@ pub mod anemometer_screen {
         {
             self.draw_title(target, "ESP32-S3 Anemometer")?;
             self.draw_gps_speed_unit(target, "km/h")?;
-            self.draw_wind_speed_unit(target, "km/h")?;
+            self.draw_wind_speed_unit(target, "rps")?;
             self.draw_gps_conn_state(target, "GPS: conn")?;
             self.draw_sd_write(target, "SD: w/r")?;
 

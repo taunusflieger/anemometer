@@ -1,3 +1,4 @@
+use crate::anemometer::anemometer::AnemometerData;
 use crate::gps_mtk3339::gps;
 use crate::gps_mtk3339::gps::Mtk3339;
 use crate::screen::anemometer_screen::LayoutManager;
@@ -32,6 +33,7 @@ use std::str;
 use std::sync::mpsc;
 use std::{thread::sleep, time::Duration};
 use sys::EspError;
+mod anemometer;
 mod display;
 mod errors;
 mod gps_mtk3339;
@@ -41,7 +43,6 @@ mod peripherals;
 mod screen;
 mod sdmmc;
 mod web_server;
-
 sys::esp_app_desc!();
 
 const FIRMWARE_VERSION: &str = env!("CARGO_PKG_VERSION");
@@ -87,6 +88,7 @@ fn main() -> anyhow::Result<()> {
     let display_peripherals = peripherals.display;
     let spi_bus_driver = peripherals.spi_bus.driver;
     let sdmmc_peripherals = peripherals.sdcard;
+    let anemometer_peripherals = peripherals.pulse_counter;
 
     let mut sd_card =
         sdmmc::sd_storage::SdCard::new(sdmmc_peripherals, Rc::clone(&spi_bus_driver))?;
@@ -105,6 +107,10 @@ fn main() -> anyhow::Result<()> {
 
     // we do it here to prevent garbage on the screen
     turn_backlight_on(backlight);
+
+    // Initialize data capture from anemometer
+    let mut anemometer = AnemometerData::new(anemometer_peripherals.pulse).unwrap();
+    let _anemometer_timer = anemometer.set_measurement_timer().unwrap();
 
     let httpd = lazy_http_server::lazy_init_http_server::LazyInitHttpServer::new();
     let (tx, rx) = mpsc::channel::<SysLoopMsg>();
@@ -154,7 +160,7 @@ fn main() -> anyhow::Result<()> {
     let tx2 = tx.clone();
     let tx3 = tx.clone();
     //let tx4 = tx.clone();
-    let tx5 = tx.clone();
+    //let tx5 = tx.clone();
     //let tx6 = tx.clone();
 
     info!(" ************** Before UART backgound thread started");
@@ -181,18 +187,14 @@ fn main() -> anyhow::Result<()> {
             gps.send_command(gps::PMTK_GPS_GLONASS);
 
             loop {
-                let mut s = gps.read_line().unwrap();
-                s = gps::Mtk3339::fix_rmc_sentence(s);
+                let mut sentence = gps.read_line().unwrap();
+                sentence = gps::Mtk3339::fix_rmc_sentence(sentence);
 
-                info!("NMEA len:{} raw: {:?}", s.len(), s);
+                info!("NMEA len:{} raw: {:?}", sentence.len(), sentence);
 
-                if s.len() > 0 {
-                    tx.send(SysLoopMsg::NmeaData {
-                        data: format!("{}\n", s),
-                    })
-                    .unwrap();
+                if sentence.len() > 0 {
                     info!("================= NMEA parse");
-                    let res = nmea.parse(s.as_str());
+                    let res = nmea.parse(sentence.as_str());
 
                     match res {
                         Ok(_res) => {
@@ -214,12 +216,24 @@ fn main() -> anyhow::Result<()> {
                             } else {
                                 0.
                             };
+                            let rps = anemometer.get_current_rps();
                             info!("NMEA speed: {:.1} km/h", speed);
-
+                            info!("Anemometer: {:.1} rps", rps);
+                            tx.send(SysLoopMsg::NmeaData {
+                                data: format!("{}:{:5.2}\n", sentence, rps),
+                            })
+                            .unwrap();
                             tx.send(SysLoopMsg::DisplayMsg {
                                 cmd: DisplayCmd {
                                     widget: WidgetName::GpsSpeed,
                                     text: format!("GPS: {:4.1}", speed),
+                                },
+                            })
+                            .unwrap();
+                            tx.send(SysLoopMsg::DisplayMsg {
+                                cmd: DisplayCmd {
+                                    widget: WidgetName::WindSpeed,
+                                    text: format!("Sen: {:4.1}", rps),
                                 },
                             })
                             .unwrap();
@@ -235,7 +249,7 @@ fn main() -> anyhow::Result<()> {
     info!(" ************** After UART backgound thread started");
 
     //let timer1 = gps_signal_sim_timer(tx4).unwrap();
-    let timer2 = wind_signal_sim_timer(tx5).unwrap();
+    //let timer2 = wind_signal_sim_timer(tx5).unwrap();
 
     let _wifi_event_sub = sysloop.subscribe(move |event: &WifiEvent| match event {
         WifiEvent::StaConnected => {
@@ -292,7 +306,7 @@ fn main() -> anyhow::Result<()> {
             Ok(SysLoopMsg::OtaUpdateStarted) => {
                 info!("OTA Update started - stopping timer and IRQ");
                 //timer1.cancel().unwrap();
-                timer2.cancel().unwrap();
+                //timer2.cancel().unwrap();
             }
             Ok(SysLoopMsg::WifiDisconnect) => {
                 info!("mpsc loop: WifiDisconnect received");
@@ -413,6 +427,7 @@ fn gps_signal_sim_timer(tx: std::sync::mpsc::Sender<SysLoopMsg>) -> Result<EspTi
     Ok(periodic_timer)
 }
 
+#[allow(dead_code)]
 fn wind_signal_sim_timer(tx: std::sync::mpsc::Sender<SysLoopMsg>) -> Result<EspTimer, EspError> {
     let periodic_timer = EspTimerService::new()?.timer(move || {
         let random_number = unsafe { esp_idf_sys::esp_random() };
