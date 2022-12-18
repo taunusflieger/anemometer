@@ -1,9 +1,8 @@
 pub mod url_handler {
-
+    use crate::anemometer::anemometer::GLOBAL_ANEMOMETER_DATA;
     use embedded_svc::{http::server::Request, io::Write, utils::http::Headers};
     use esp_idf_svc::http::server::EspHttpConnection;
     use log::info;
-
     const FIRMWARE_VERSION: &str = env!("CARGO_PKG_VERSION");
     const OTA_PAGE: &str = include_str!("../html/ota-update.html");
 
@@ -150,17 +149,16 @@ pub mod url_handler {
         Ok(())
     }
 
-    pub fn temperature_handler(
+    pub fn windspeed_handler(
         req: Request<&mut EspHttpConnection>,
     ) -> embedded_svc::http::server::HandlerResult {
-        let temp_val = 42.0;
-        let html = temperature(temp_val);
+        let html = windspeed(GLOBAL_ANEMOMETER_DATA.lock().unwrap().rps);
         let mut headers = Headers::<1>::new();
         headers.set_cache_control("no-store");
 
         let mut resp = req.into_response(200, None, headers.as_slice())?;
         resp.write_all(html.as_bytes())?;
-        info!("Processing '/temperature' request");
+        info!("Processing '/windspeed' request");
         Ok(())
     }
 
@@ -182,7 +180,7 @@ pub mod url_handler {
         )
     }
 
-    fn temperature(val: f32) -> String {
-        templated(format!("chip temperature: {:.2}°C", val))
+    fn windspeed(val: f32) -> String {
+        templated(format!("Rotation speed: {:.2} rps", val))
     }
 }

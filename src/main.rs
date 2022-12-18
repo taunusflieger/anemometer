@@ -1,4 +1,4 @@
-use crate::anemometer::anemometer::AnemometerData;
+use crate::anemometer::anemometer::{AnemometerDriver, GLOBAL_ANEMOMETER_DATA};
 use crate::gps_mtk3339::gps;
 use crate::gps_mtk3339::gps::Mtk3339;
 use crate::screen::anemometer_screen::LayoutManager;
@@ -10,7 +10,6 @@ use embedded_graphics::prelude::*;
 use embedded_svc::wifi::{self, AuthMethod, ClientConfiguration};
 use esp_idf_hal::gpio;
 use esp_idf_hal::gpio::*;
-
 use esp_idf_svc::http::server::Configuration;
 use esp_idf_svc::{
     eventloop::EspSystemEventLoop,
@@ -32,6 +31,7 @@ use std::{thread::sleep, time::Duration};
 mod anemometer;
 mod display;
 mod errors;
+
 mod gps_mtk3339;
 mod lazy_http_server;
 mod neopixel;
@@ -105,7 +105,7 @@ fn main() -> anyhow::Result<()> {
     turn_backlight_on(backlight);
 
     // Initialize data capture from anemometer
-    let mut anemometer = AnemometerData::new(anemometer_peripherals.pulse).unwrap();
+    let mut anemometer = AnemometerDriver::new(anemometer_peripherals.pulse).unwrap();
     let _anemometer_timer = anemometer.set_measurement_timer().unwrap();
 
     let httpd = lazy_http_server::lazy_init_http_server::LazyInitHttpServer::new();
@@ -210,6 +210,10 @@ fn main() -> anyhow::Result<()> {
                                 0.
                             };
                             let rps = anemometer.get_current_rps();
+                            let mut anemometer_data = GLOBAL_ANEMOMETER_DATA.lock().unwrap();
+                            anemometer_data.rps = rps;
+                            drop(anemometer_data);
+
                             info!("NMEA speed: {:.1} km/h", speed);
                             info!("Anemometer: {:.1} rps", rps);
                             tx.send(SysLoopMsg::NmeaData {
@@ -359,11 +363,11 @@ fn main() -> anyhow::Result<()> {
                     }
                 }
 
-                if let Err(err) = s.fn_handler(
-                    "/temperature",
-                    embedded_svc::http::Method::Get,
-                    move |req| url_handler::temperature_handler(req),
-                ) {
+                if let Err(err) =
+                    s.fn_handler("/windspeed", embedded_svc::http::Method::Get, move |req| {
+                        url_handler::windspeed_handler(req)
+                    })
+                {
                     info!(
                         "mpsc loop: failed to register http handler /temperature: {:?} - restarting device",
                         err

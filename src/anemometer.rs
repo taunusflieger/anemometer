@@ -8,23 +8,36 @@ pub mod anemometer {
     use esp_idf_svc::timer::*;
     use esp_idf_sys::*;
     use fixed::types::U20F12;
-    use std::sync::{atomic::*, Arc};
+    use std::sync::{atomic::*, Arc, Mutex};
     use std::time::Duration;
 
-    pub struct AnemometerData<P>
+    pub static GLOBAL_ANEMOMETER_DATA: Mutex<GlobalAnemometerData> =
+        Mutex::new(GlobalAnemometerData {
+            rps: 0.0,
+            angle: 0.0,
+        });
+
+    pub struct GlobalAnemometerData {
+        pub rps: f32,
+        pub angle: f32,
+    }
+
+    pub struct AnemometerDriver<P>
     where
         P: Pin,
     {
         pub rps: Arc<AtomicU32>,
-        pub angle: f32,
+        pub angle: Arc<AtomicU32>,
         _pin: PinDriver<'static, P, Input>,
     }
 
-    impl<'d, P: InputPin> AnemometerData<P> {
-        pub fn new(pin: impl Peripheral<P = P> + 'static) -> Result<AnemometerData<P>, InitError> {
-            Ok(AnemometerData {
+    impl<'d, P: InputPin> AnemometerDriver<P> {
+        pub fn new(
+            pin: impl Peripheral<P = P> + 'static,
+        ) -> Result<AnemometerDriver<P>, InitError> {
+            Ok(AnemometerDriver {
                 rps: Arc::new(AtomicU32::new(0)),
-                angle: 0.0,
+                angle: Arc::new(AtomicU32::new(0)),
                 _pin: subscribe_pin(pin, count_pulse)?,
             })
         }
@@ -44,6 +57,10 @@ pub mod anemometer {
 
         pub fn get_current_rps(&self) -> f32 {
             U20F12::from_bits(self.rps.load(Ordering::Relaxed)).to_num()
+        }
+
+        pub fn get_current_angle(&self) -> f32 {
+            U20F12::from_bits(self.angle.load(Ordering::Relaxed)).to_num()
         }
     }
 
