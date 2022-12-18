@@ -4,8 +4,6 @@ use crate::gps_mtk3339::gps::Mtk3339;
 use crate::screen::anemometer_screen::LayoutManager;
 use crate::web_server::url_handler;
 use core::mem;
-//use core::num::dec2flt::float;
-//use core::str;
 use embedded_graphics::draw_target::DrawTarget;
 use embedded_graphics::pixelcolor::Rgb565;
 use embedded_graphics::prelude::*;
@@ -14,7 +12,6 @@ use esp_idf_hal::gpio;
 use esp_idf_hal::gpio::*;
 
 use esp_idf_svc::http::server::Configuration;
-use esp_idf_svc::timer::*;
 use esp_idf_svc::{
     eventloop::EspSystemEventLoop,
     netif::IpEvent,
@@ -32,7 +29,6 @@ use std::rc::Rc;
 use std::str;
 use std::sync::mpsc;
 use std::{thread::sleep, time::Duration};
-use sys::EspError;
 mod anemometer;
 mod display;
 mod errors;
@@ -159,9 +155,6 @@ fn main() -> anyhow::Result<()> {
     let tx1 = tx.clone();
     let tx2 = tx.clone();
     let tx3 = tx.clone();
-    //let tx4 = tx.clone();
-    //let tx5 = tx.clone();
-    //let tx6 = tx.clone();
 
     info!(" ************** Before UART backgound thread started");
     let _ = std::thread::Builder::new()
@@ -248,9 +241,6 @@ fn main() -> anyhow::Result<()> {
 
     info!(" ************** After UART backgound thread started");
 
-    //let timer1 = gps_signal_sim_timer(tx4).unwrap();
-    //let timer2 = wind_signal_sim_timer(tx5).unwrap();
-
     let _wifi_event_sub = sysloop.subscribe(move |event: &WifiEvent| match event {
         WifiEvent::StaConnected => {
             info!("******* Received STA Connected Event");
@@ -305,8 +295,6 @@ fn main() -> anyhow::Result<()> {
             }
             Ok(SysLoopMsg::OtaUpdateStarted) => {
                 info!("OTA Update started - stopping timer and IRQ");
-                //timer1.cancel().unwrap();
-                //timer2.cancel().unwrap();
             }
             Ok(SysLoopMsg::WifiDisconnect) => {
                 info!("mpsc loop: WifiDisconnect received");
@@ -405,46 +393,6 @@ fn turn_backlight_on(p: AnyOutputPin) {
     backlight.set_high().unwrap();
 
     mem::forget(backlight); // TODO: For now
-}
-
-#[allow(dead_code)]
-fn gps_signal_sim_timer(tx: std::sync::mpsc::Sender<SysLoopMsg>) -> Result<EspTimer, EspError> {
-    let periodic_timer = EspTimerService::new()?.timer(move || {
-        let random_number = unsafe { esp_idf_sys::esp_random() };
-        let sim_gps_speed: u32 = random_number % (33 - 15 + 1) + 15;
-
-        tx.send(SysLoopMsg::DisplayMsg {
-            cmd: DisplayCmd {
-                widget: WidgetName::GpsSpeed,
-                text: format!("GPS: {}", sim_gps_speed),
-            },
-        })
-        .unwrap();
-    })?;
-
-    periodic_timer.every(Duration::from_secs(5))?;
-
-    Ok(periodic_timer)
-}
-
-#[allow(dead_code)]
-fn wind_signal_sim_timer(tx: std::sync::mpsc::Sender<SysLoopMsg>) -> Result<EspTimer, EspError> {
-    let periodic_timer = EspTimerService::new()?.timer(move || {
-        let random_number = unsafe { esp_idf_sys::esp_random() };
-        let sim_wind_speed: u32 = random_number % (33 - 15 + 1) + 15;
-
-        tx.send(SysLoopMsg::DisplayMsg {
-            cmd: DisplayCmd {
-                widget: WidgetName::WindSpeed,
-                text: format!("Win: {}", sim_wind_speed),
-            },
-        })
-        .unwrap();
-    })?;
-
-    periodic_timer.every(Duration::from_secs(6))?;
-
-    Ok(periodic_timer)
 }
 
 fn print_stack_remaining_size(stack_size: u32) {
