@@ -7,8 +7,7 @@ pub mod anemometer {
     use esp_idf_hal::peripheral::Peripheral;
     use esp_idf_svc::timer::*;
     use esp_idf_sys::*;
-    use fixed::types::U20F12;
-    use std::sync::{atomic::*, Arc, Mutex};
+    use std::sync::{atomic::*, Mutex};
     use std::time::Duration;
 
     pub static GLOBAL_ANEMOMETER_DATA: Mutex<GlobalAnemometerData> =
@@ -26,8 +25,6 @@ pub mod anemometer {
     where
         P: Pin,
     {
-        pub rps: Arc<AtomicU32>,
-        pub angle: Arc<AtomicU32>,
         _pin: PinDriver<'static, P, Input>,
     }
 
@@ -36,31 +33,20 @@ pub mod anemometer {
             pin: impl Peripheral<P = P> + 'static,
         ) -> Result<AnemometerDriver<P>, InitError> {
             Ok(AnemometerDriver {
-                rps: Arc::new(AtomicU32::new(0)),
-                angle: Arc::new(AtomicU32::new(0)),
                 _pin: subscribe_pin(pin, count_pulse)?,
             })
         }
 
         pub fn set_measurement_timer(&mut self) -> Result<EspTimer, EspError> {
-            let rps_store = Arc::clone(&self.rps);
             let periodic_timer = EspTimerService::new()?.timer(move || {
                 let cnt = ANEMOMETER_PULSCOUNT.fetch_and(0, Ordering::Relaxed);
-                let rps = U20F12::from_num(cnt) / 2 / (MEASUREMENT_INTERVAL as u32); // two pules per 360 degree rotation
-                rps_store.store(rps.to_bits(), Ordering::Relaxed);
+                let mut anemometer_data = GLOBAL_ANEMOMETER_DATA.lock().unwrap();
+                anemometer_data.rps = cnt as f32 / 2.0 / (MEASUREMENT_INTERVAL as u32) as f32;
             })?;
 
             periodic_timer.every(Duration::from_secs(MEASUREMENT_INTERVAL))?;
 
             Ok(periodic_timer)
-        }
-
-        pub fn get_current_rps(&self) -> f32 {
-            U20F12::from_bits(self.rps.load(Ordering::Relaxed)).to_num()
-        }
-
-        pub fn get_current_angle(&self) -> f32 {
-            U20F12::from_bits(self.angle.load(Ordering::Relaxed)).to_num()
         }
     }
 

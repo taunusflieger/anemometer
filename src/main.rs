@@ -1,15 +1,35 @@
 use crate::anemometer::anemometer::{AnemometerDriver, GLOBAL_ANEMOMETER_DATA};
+
+#[cfg(feature = "gps")]
 use crate::gps_mtk3339::gps;
+
+#[cfg(feature = "gps")]
 use crate::gps_mtk3339::gps::Mtk3339;
+#[cfg(feature = "tft")]
 use crate::screen::anemometer_screen::LayoutManager;
 use crate::web_server::url_handler;
+
+#[cfg(feature = "gps")]
+use chrono::NaiveTime;
+
+#[cfg(feature = "gps")]
 use core::mem;
+#[cfg(feature = "tft")]
 use embedded_graphics::draw_target::DrawTarget;
+
+#[cfg(feature = "tft")]
 use embedded_graphics::pixelcolor::Rgb565;
+
+#[cfg(feature = "tft")]
 use embedded_graphics::prelude::*;
 use embedded_svc::wifi::{self, AuthMethod, ClientConfiguration};
+
+#[cfg(feature = "tft")]
 use esp_idf_hal::gpio;
+
+#[cfg(feature = "tft")]
 use esp_idf_hal::gpio::*;
+
 use esp_idf_svc::http::server::Configuration;
 use esp_idf_svc::{
     eventloop::EspSystemEventLoop,
@@ -20,27 +40,41 @@ use esp_idf_svc::{
 use esp_idf_sys as _;
 use esp_idf_sys::{self as sys, esp, esp_wifi_set_ps, wifi_ps_type_t_WIFI_PS_NONE};
 use log::info;
+
+#[cfg(feature = "gps")]
 use nmea;
 use smart_leds::{colors::*, RGB8};
+
+#[cfg(feature = "tft")]
 use std::format;
 use std::net::Ipv4Addr;
+
+#[cfg(any(feature = "sdcard", feature = "tft"))]
 use std::rc::Rc;
 use std::str;
 use std::sync::mpsc;
 use std::{thread::sleep, time::Duration};
 mod anemometer;
+#[cfg(feature = "tft")]
 mod display;
 mod errors;
 
+#[cfg(feature = "gps")]
 mod gps_mtk3339;
 mod lazy_http_server;
 mod neopixel;
 mod peripherals;
+
+#[cfg(feature = "tft")]
 mod screen;
+
+#[cfg(feature = "sdcard")]
 mod sdmmc;
 mod web_server;
+
 sys::esp_app_desc!();
 
+#[cfg(feature = "tft")]
 const FIRMWARE_VERSION: &str = env!("CARGO_PKG_VERSION");
 
 #[toml_cfg::toml_config]
@@ -51,16 +85,19 @@ pub struct Config {
     wifi_psk: &'static str,
 }
 
+#[allow(dead_code)]
 enum WidgetName {
     GpsSpeed,
     WindSpeed,
 }
 
+#[allow(dead_code)]
 struct DisplayCmd {
     widget: WidgetName,
     text: String,
 }
 
+#[allow(dead_code)]
 enum SysLoopMsg {
     WifiDisconnect,
     IpAddressAsquired { ip: Ipv4Addr },
@@ -81,28 +118,40 @@ fn main() -> anyhow::Result<()> {
 
     status_led.write(DARK_ORANGE)?;
 
+    #[cfg(feature = "tft")]
     let display_peripherals = peripherals.display;
+
+    #[cfg(any(feature = "sdcard", feature = "tft"))]
     let spi_bus_driver = peripherals.spi_bus.driver;
+
+    #[cfg(feature = "sdcard")]
     let sdmmc_peripherals = peripherals.sdcard;
     let anemometer_peripherals = peripherals.pulse_counter;
 
+    #[cfg(feature = "sdcard")]
     let mut sd_card =
         sdmmc::sd_storage::SdCard::new(sdmmc_peripherals, Rc::clone(&spi_bus_driver))?;
 
-    let mut display = display::display(display_peripherals, Rc::clone(&spi_bus_driver)).unwrap();
-    let backlight = peripherals.display_backlight;
+    cfg_if::cfg_if! {
+            if #[cfg(feature = "tft")] {
 
-    display.clear(Rgb565::BLACK).unwrap();
+        let mut display = display::display(display_peripherals, Rc::clone(&spi_bus_driver)).unwrap();
 
-    let layout_mgr = LayoutManager::new()?;
+        let backlight = peripherals.display_backlight;
 
-    layout_mgr.draw_initial_screen(&mut display).unwrap();
-    layout_mgr
-        .draw_sw_version(&mut display, format!("FW: V{}", FIRMWARE_VERSION).as_str())
-        .unwrap();
+        display.clear(Rgb565::BLACK).unwrap();
 
-    // we do it here to prevent garbage on the screen
-    turn_backlight_on(backlight);
+        let layout_mgr = LayoutManager::new()?;
+
+        layout_mgr.draw_initial_screen(&mut display).unwrap();
+        layout_mgr
+            .draw_sw_version(&mut display, format!("FW: V{}", FIRMWARE_VERSION).as_str())
+            .unwrap();
+
+        // we do it here to prevent garbage on the screen
+        turn_backlight_on(backlight);
+    }
+    }
 
     // Initialize data capture from anemometer
     let mut anemometer = AnemometerDriver::new(anemometer_peripherals.pulse).unwrap();
@@ -156,6 +205,8 @@ fn main() -> anyhow::Result<()> {
     let tx2 = tx.clone();
     let tx3 = tx.clone();
 
+    cfg_if::cfg_if! {
+        if #[cfg(feature = "gps")] {
     info!(" ************** Before UART backgound thread started");
     let _ = std::thread::Builder::new()
         .stack_size(16_000)
@@ -205,19 +256,26 @@ fn main() -> anyhow::Result<()> {
                                 }
                             );
                             let speed = if nmea.speed_over_ground.is_some() {
+                                // kn/h -> km/h
                                 (nmea.speed_over_ground.unwrap() as f32) * 1.852_f32
                             } else {
                                 0.
                             };
-                            let rps = anemometer.get_current_rps();
-                            let mut anemometer_data = GLOBAL_ANEMOMETER_DATA.lock().unwrap();
-                            anemometer_data.rps = rps;
+                            let timestamp = if nmea.fix_timestamp().is_some() {
+                                nmea.fix_timestamp().unwrap()
+                            } else {
+                                NaiveTime::from_hms_opt(8, 0, 0).unwrap()
+                            };
+
+                            let anemometer_data = GLOBAL_ANEMOMETER_DATA.lock().unwrap();
+                            let rps = anemometer_data.rps;
                             drop(anemometer_data);
 
                             info!("NMEA speed: {:.1} km/h", speed);
                             info!("Anemometer: {:.1} rps", rps);
+                            info!("Timestamp : {}", timestamp);
                             tx.send(SysLoopMsg::NmeaData {
-                                data: format!("{:5.2},{:5.2}\n", speed, rps),
+                                data: format!("{},{:5.2},{:5.2}\n", timestamp, speed, rps),
                             })
                             .unwrap();
                             tx.send(SysLoopMsg::DisplayMsg {
@@ -244,6 +302,7 @@ fn main() -> anyhow::Result<()> {
         .unwrap();
 
     info!(" ************** After UART backgound thread started");
+    }}
 
     let _wifi_event_sub = sysloop.subscribe(move |event: &WifiEvent| match event {
         WifiEvent::StaConnected => {
@@ -278,6 +337,7 @@ fn main() -> anyhow::Result<()> {
     loop {
         match rx.try_recv() {
             Ok(SysLoopMsg::DisplayMsg { cmd }) => {
+                #[cfg(feature = "tft")]
                 match cmd.widget {
                     WidgetName::GpsSpeed => {
                         layout_mgr
@@ -291,7 +351,9 @@ fn main() -> anyhow::Result<()> {
                     }
                 };
             }
+
             Ok(SysLoopMsg::NmeaData { data }) => {
+                #[cfg(feature = "sdcard")]
                 sd_card.write(data);
             }
             Ok(SysLoopMsg::NeopixelMsg { color }) => {
@@ -305,6 +367,7 @@ fn main() -> anyhow::Result<()> {
 
                 httpd.clear();
                 tx2.send(SysLoopMsg::NeopixelMsg { color: RED })?;
+                #[cfg(feature = "tft")]
                 layout_mgr.draw_ip_address(&mut display, " ").unwrap();
             }
             Ok(SysLoopMsg::IpAddressAsquired { ip }) => {
@@ -313,6 +376,7 @@ fn main() -> anyhow::Result<()> {
 
                 tx3.send(SysLoopMsg::NeopixelMsg { color: DARK_GREEN })?;
 
+                #[cfg(feature = "tft")]
                 layout_mgr
                     .draw_ip_address(&mut display, format!("IP: {}", ip.to_string()).as_str())
                     .unwrap();
@@ -390,6 +454,7 @@ fn main() -> anyhow::Result<()> {
     }
 }
 
+#[cfg(feature = "tft")]
 fn turn_backlight_on(p: AnyOutputPin) {
     let mut backlight = PinDriver::output(p).unwrap();
 
@@ -399,6 +464,7 @@ fn turn_backlight_on(p: AnyOutputPin) {
     mem::forget(backlight); // TODO: For now
 }
 
+#[cfg(feature = "gps")]
 fn print_stack_remaining_size(stack_size: u32) {
     let stack = unsafe { esp_idf_sys::uxTaskGetStackHighWaterMark(core::ptr::null_mut()) };
     let left = stack_size - stack;

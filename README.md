@@ -71,7 +71,7 @@ The new version will see there is no later version online to flash.
 - [ ] Evaluate pros and cons for using ESP32-S3 vs ESP32-C3 (power consumption, sleep, local web server, OTA needs to be considered)
 - [x] ISR & event counting for windspeed sensor
 - [ ] UI for OTA update
-- [ ] Fully implement the feature approach to seperate the calibration use case from production use case. The image for calibration is too large to allow OTA. Display, GPS and SD Card are not required for production
+- [x] Fully implement the feature approach to seperate the calibration use case from production use case. The image for calibration is too large to allow OTA. Display, GPS and SD Card are not required for production
 - [ ] Implement MQTT for data ingress to AWS
 - [ ] Implement sleep mode (which one ?)
 - [ ] Implement new UI for the AWS lamda based weather station App
