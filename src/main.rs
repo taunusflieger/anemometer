@@ -217,7 +217,7 @@ fn main() -> anyhow::Result<()> {
                             info!("NMEA speed: {:.1} km/h", speed);
                             info!("Anemometer: {:.1} rps", rps);
                             tx.send(SysLoopMsg::NmeaData {
-                                data: format!("{}:{:5.2}\n", sentence, rps),
+                                data: format!("{:5.2},{:5.2}\n", speed, rps),
                             })
                             .unwrap();
                             tx.send(SysLoopMsg::DisplayMsg {
