@@ -33,7 +33,7 @@ dependencies = [
  "embedded-graphics-core",
  "embedded-hal 1.0.0-alpha.9",
  "embedded-sdmmc",
- "embedded-svc",
+ "embedded-svc 0.24.0",
  "embuild 0.31.0",
  "esp-idf-hal",
  "esp-idf-svc",
@@ -638,6 +638,24 @@ dependencies = [
  "enumset",
  "futures",
  "heapless",
+ "no-std-net",
+ "num_enum",
+ "serde",
+ "strum 0.23.0",
+]
+
+[[package]]
+name = "embedded-svc"
+version = "0.24.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "2079f8182848872fb6e8eed2c1ba3aea409fc71984a9e8090733c08c404e7864"
+dependencies = [
+ "anyhow",
+ "defmt",
+ "embedded-io",
+ "enumset",
+ "futures",
+ "heapless",
  "log",
  "no-std-net",
  "num_enum",
@@ -762,7 +780,7 @@ checksum = "64c06a71ac4634bbc9c8f113050d96b9e84e0e8c8be1e2c0f187463f4fbe482a"
 dependencies = [
  "anyhow",
  "cstr_core",
- "embedded-svc",
+ "embedded-svc 0.23.2",
  "embuild 0.30.5",
  "enumset",
  "esp-idf-hal",
