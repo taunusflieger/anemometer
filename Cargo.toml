@@ -18,10 +18,9 @@ debug = true    # Symbols are nice and they don't increase the size on Flash
 opt-level = "z"
 
 [features]
-default = ["production"]
-#default = ["tft", "gps", "sdcard", "neopixel"]
-experimental = ["esp-idf-svc/experimental", "embedded-svc/experimental"]
-tft = [
+default = ["calibration"]
+production = []
+calibration = [
     "mipidsi",
     "gfx-xtra",
     "embedded-graphics",
@@ -29,11 +28,13 @@ tft = [
     "display-interface-spi",
     "display-interface",
     "profont",
+    "nmea",
+    "embedded-sdmmc",
+    "smart-leds",
 ]
-gps = ["nmea"]
-sdcard = ["embedded-sdmmc"]
-production = []
-neopixel = ["smart-leds"]
+#default = ["tft", "gps", "sdcard", "neopixel"]
+experimental = ["esp-idf-svc/experimental", "embedded-svc/experimental"]
+
 
 [dependencies]
 embedded-graphics = { version = "0.7.1", optional = true }

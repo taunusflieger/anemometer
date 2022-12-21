@@ -119,8 +119,6 @@ pub mod url_handler {
         unsafe {
             esp_idf_sys::esp_restart();
         }
-        info!("failed to restart device");
-        Ok(())
     }
 
     pub fn api_version_handler(

@@ -1,33 +1,34 @@
-use crate::anemometer::anemometer::{AnemometerDriver, GLOBAL_ANEMOMETER_DATA};
-
-#[cfg(feature = "gps")]
+use crate::anemometer::anemometer::AnemometerDriver;
+#[cfg(feature = "calibration")]
+use crate::anemometer::anemometer::GLOBAL_ANEMOMETER_DATA;
+#[cfg(feature = "calibration")]
 use crate::gps_mtk3339::gps;
 
-#[cfg(feature = "gps")]
+#[cfg(feature = "calibration")]
 use crate::gps_mtk3339::gps::Mtk3339;
-#[cfg(feature = "tft")]
+#[cfg(feature = "calibration")]
 use crate::screen::anemometer_screen::LayoutManager;
 use crate::web_server::url_handler;
 
-#[cfg(feature = "gps")]
+#[cfg(feature = "calibration")]
 use chrono::NaiveTime;
 
-#[cfg(feature = "gps")]
+#[cfg(feature = "calibration")]
 use core::mem;
-#[cfg(feature = "tft")]
+#[cfg(feature = "calibration")]
 use embedded_graphics::draw_target::DrawTarget;
 
-#[cfg(feature = "tft")]
+#[cfg(feature = "calibration")]
 use embedded_graphics::pixelcolor::Rgb565;
 
-#[cfg(feature = "tft")]
+#[cfg(feature = "calibration")]
 use embedded_graphics::prelude::*;
 use embedded_svc::wifi::{self, AuthMethod, ClientConfiguration};
 
-#[cfg(feature = "tft")]
+#[cfg(feature = "calibration")]
 use esp_idf_hal::gpio;
 
-#[cfg(feature = "tft")]
+#[cfg(feature = "calibration")]
 use esp_idf_hal::gpio::*;
 
 use esp_idf_svc::http::server::Configuration;
@@ -35,63 +36,61 @@ use esp_idf_svc::{
     eventloop::EspSystemEventLoop,
     netif::IpEvent,
     nvs::EspDefaultNvsPartition,
-    wifi::{EspWifi, WifiEvent, WifiWait},
+    wifi::{EspWifi, WifiEvent},
 };
 use esp_idf_sys as _;
 use esp_idf_sys::{self as sys, esp, esp_wifi_set_ps, wifi_ps_type_t_WIFI_PS_NONE};
 use log::info;
 
-#[cfg(feature = "gps")]
+#[cfg(feature = "calibration")]
 use nmea;
-#[cfg(feature = "neopixel")]
+#[cfg(feature = "calibration")]
 use smart_leds::{colors::*, RGB8};
 
-#[cfg(feature = "tft")]
+#[cfg(feature = "calibration")]
 use std::format;
 use std::net::Ipv4Addr;
 
-#[cfg(any(feature = "sdcard", feature = "tft"))]
+#[cfg(any(feature = "calibration", feature = "calibration"))]
 use std::rc::Rc;
 
-#[cfg(any(feature = "sdcard", feature = "tft"))]
+#[cfg(any(feature = "calibration", feature = "calibration"))]
 use std::str;
 use std::sync::mpsc;
-use std::{thread::sleep, time::Duration};
 mod anemometer;
-#[cfg(feature = "tft")]
+#[cfg(feature = "calibration")]
 mod display;
 mod errors;
 
-#[cfg(feature = "gps")]
+#[cfg(feature = "calibration")]
 mod gps_mtk3339;
 mod lazy_http_server;
 
-#[cfg(feature = "neopixel")]
+#[cfg(feature = "calibration")]
 mod neopixel;
 mod peripherals;
 
-#[cfg(feature = "tft")]
+#[cfg(feature = "calibration")]
 mod screen;
 
-#[cfg(feature = "sdcard")]
+#[cfg(feature = "calibration")]
 mod sdmmc;
 mod web_server;
 
 sys::esp_app_desc!();
 
-#[cfg(feature = "tft")]
+#[cfg(feature = "calibration")]
 const FIRMWARE_VERSION: &str = env!("CARGO_PKG_VERSION");
 
 const SSID: &str = env!("RUST_ESP32_ANEMOMETER_WIFI_SSID");
 const PASS: &str = env!("RUST_ESP32_ANEMOMETER_WIFI_PASS");
 
-#[allow(dead_code)]
+#[cfg(feature = "calibration")]
 enum WidgetName {
     GpsSpeed,
     WindSpeed,
 }
-
-#[allow(dead_code)]
+#[cfg(feature = "calibration")]
 struct DisplayCmd {
     widget: WidgetName,
     text: String,
@@ -103,14 +102,16 @@ enum SysLoopMsg {
     IpAddressAsquired {
         ip: Ipv4Addr,
     },
-    #[cfg(feature = "neopixel")]
+    #[cfg(feature = "calibration")]
     NeopixelMsg {
         color: RGB8,
     },
+    #[cfg(feature = "calibration")]
     DisplayMsg {
         cmd: DisplayCmd,
     },
     OtaUpdateStarted,
+    #[cfg(feature = "calibration")]
     NmeaData {
         data: String,
     },
@@ -122,47 +123,38 @@ fn main() -> anyhow::Result<()> {
     info!("Starting ...");
     let peripherals = peripherals::SystemPeripherals::take();
 
-    cfg_if::cfg_if! {
-        if #[cfg(feature = "neopixel")] {
-    let mut status_led = neopixel::ws2812::NeoPixel::new(peripherals.neopixel)?;
-    status_led.power_on(true);
-
-    status_led.write(DARK_ORANGE)?;
-    }}
-
-    #[cfg(feature = "tft")]
-    let display_peripherals = peripherals.display;
-
-    #[cfg(any(feature = "sdcard", feature = "tft"))]
-    let spi_bus_driver = peripherals.spi_bus.driver;
-
-    #[cfg(feature = "sdcard")]
-    let sdmmc_peripherals = peripherals.sdcard;
     let anemometer_peripherals = peripherals.pulse_counter;
 
-    #[cfg(feature = "sdcard")]
-    let mut sd_card =
-        sdmmc::sd_storage::SdCard::new(sdmmc_peripherals, Rc::clone(&spi_bus_driver))?;
-
     cfg_if::cfg_if! {
-            if #[cfg(feature = "tft")] {
+        if #[cfg(feature = "calibration")] {
+        let mut status_led = neopixel::ws2812::NeoPixel::new(peripherals.neopixel)?;
 
-        let mut display = display::display(display_peripherals, Rc::clone(&spi_bus_driver)).unwrap();
+        status_led.power_on(true);
+        status_led.write(DARK_ORANGE)?;
 
-        let backlight = peripherals.display_backlight;
+        let display_peripherals = peripherals.display;
+        let spi_bus_driver = peripherals.spi_bus.driver;
+        let sdmmc_peripherals = peripherals.sdcard;
 
-        display.clear(Rgb565::BLACK).unwrap();
+        let mut sd_card =
+            sdmmc::sd_storage::SdCard::new(sdmmc_peripherals, Rc::clone(&spi_bus_driver))?;
 
-        let layout_mgr = LayoutManager::new()?;
+            let mut display = display::display(display_peripherals, Rc::clone(&spi_bus_driver)).unwrap();
 
-        layout_mgr.draw_initial_screen(&mut display).unwrap();
-        layout_mgr
-            .draw_sw_version(&mut display, format!("FW: V{}", FIRMWARE_VERSION).as_str())
-            .unwrap();
+            let backlight = peripherals.display_backlight;
 
-        // we do it here to prevent garbage on the screen
-        turn_backlight_on(backlight);
-    }
+            display.clear(Rgb565::BLACK).unwrap();
+
+            let layout_mgr = LayoutManager::new()?;
+
+            layout_mgr.draw_initial_screen(&mut display).unwrap();
+            layout_mgr
+                .draw_sw_version(&mut display, format!("FW: V{}", FIRMWARE_VERSION).as_str())
+                .unwrap();
+
+            // we do it here to prevent garbage on the screen
+            turn_backlight_on(backlight);
+        }
     }
 
     // Initialize data capture from anemometer
@@ -200,106 +192,107 @@ fn main() -> anyhow::Result<()> {
 
     let tx0 = tx.clone();
     let tx1 = tx.clone();
+    #[cfg(feature = "calibration")]
     let tx2 = tx.clone();
     let tx3 = tx.clone();
 
     cfg_if::cfg_if! {
-        if #[cfg(feature = "gps")] {
-    info!(" ************** Before UART backgound thread started");
-    let _ = std::thread::Builder::new()
-        .stack_size(16_000)
-        .spawn(move || {
-            info!("GPS Listening for messages");
-            print_stack_remaining_size(16_000);
-            let mut nmea = nmea::Nmea::default();
-            print_stack_remaining_size(16_000);
+        if #[cfg(feature = "calibration")] {
+        info!(" ************** Before UART backgound thread started");
+        let _ = std::thread::Builder::new()
+            .stack_size(16_000)
+            .spawn(move || {
+                info!("GPS Listening for messages");
+                print_stack_remaining_size(16_000);
+                let mut nmea = nmea::Nmea::default();
+                print_stack_remaining_size(16_000);
 
-            info!("Size of NMEA: {}", std::mem::size_of::<nmea::Nmea>());
+                info!("Size of NMEA: {}", std::mem::size_of::<nmea::Nmea>());
 
-            info!("Configure GPS receiver");
-            let mut gps = Mtk3339::new(
-                9600,
-                peripherals.gps.uart1,
-                peripherals.gps.tx,
-                peripherals.gps.rx,
-            )
+                info!("Configure GPS receiver");
+                let mut gps = Mtk3339::new(
+                    9600,
+                    peripherals.gps.uart1,
+                    peripherals.gps.tx,
+                    peripherals.gps.rx,
+                )
+                .unwrap();
+
+                gps.send_command(gps::PMTK_SET_NMEA_OUTPUT_RMCGGA);
+                gps.send_command(gps::PMTK_GPS_GLONASS);
+
+                loop {
+                    let mut sentence = gps.read_line().unwrap();
+                    sentence = gps::Mtk3339::fix_rmc_sentence(sentence);
+
+                    info!("NMEA len:{} raw: {:?}", sentence.len(), sentence);
+
+                    if sentence.len() > 0 {
+                        info!("================= NMEA parse");
+                        let res = nmea.parse(sentence.as_str());
+
+                        match res {
+                            Ok(_res) => {
+                                info!(
+                                    "NMEA latetude: {:.6}, longitude: {:.6}",
+                                    if nmea.latitude.is_some() {
+                                        nmea.latitude.unwrap() as f32
+                                    } else {
+                                        0.
+                                    },
+                                    if nmea.longitude.is_some() {
+                                        nmea.longitude.unwrap() as f32
+                                    } else {
+                                        0.
+                                    }
+                                );
+                                let speed = if nmea.speed_over_ground.is_some() {
+                                    // kn/h -> km/h
+                                    (nmea.speed_over_ground.unwrap() as f32) * 1.852_f32
+                                } else {
+                                    0.
+                                };
+                                let timestamp = if nmea.fix_timestamp().is_some() {
+                                    nmea.fix_timestamp().unwrap()
+                                } else {
+                                    NaiveTime::from_hms_opt(8, 0, 0).unwrap()
+                                };
+
+                                let anemometer_data = GLOBAL_ANEMOMETER_DATA.lock().unwrap();
+                                let rps = anemometer_data.rps;
+                                drop(anemometer_data);
+
+                                info!("NMEA speed: {:.1} km/h", speed);
+                                info!("Anemometer: {:.1} rps", rps);
+                                info!("Timestamp : {}", timestamp);
+                                tx.send(SysLoopMsg::NmeaData {
+                                    data: format!("{},{:5.2},{:5.2}\n", timestamp, speed, rps),
+                                })
+                                .unwrap();
+                                tx.send(SysLoopMsg::DisplayMsg {
+                                    cmd: DisplayCmd {
+                                        widget: WidgetName::GpsSpeed,
+                                        text: format!("GPS: {:4.1}", speed),
+                                    },
+                                })
+                                .unwrap();
+                                tx.send(SysLoopMsg::DisplayMsg {
+                                    cmd: DisplayCmd {
+                                        widget: WidgetName::WindSpeed,
+                                        text: format!("Sen: {:4.1}", rps),
+                                    },
+                                })
+                                .unwrap();
+                            }
+                            Err(e) => info!("******* NEMEA error : {e:?} *******"),
+                        }
+                    }
+                    esp_idf_hal::delay::FreeRtos::delay_ms(1000);
+                }
+            })
             .unwrap();
 
-            gps.send_command(gps::PMTK_SET_NMEA_OUTPUT_RMCGGA);
-            gps.send_command(gps::PMTK_GPS_GLONASS);
-
-            loop {
-                let mut sentence = gps.read_line().unwrap();
-                sentence = gps::Mtk3339::fix_rmc_sentence(sentence);
-
-                info!("NMEA len:{} raw: {:?}", sentence.len(), sentence);
-
-                if sentence.len() > 0 {
-                    info!("================= NMEA parse");
-                    let res = nmea.parse(sentence.as_str());
-
-                    match res {
-                        Ok(_res) => {
-                            info!(
-                                "NMEA latetude: {:.6}, longitude: {:.6}",
-                                if nmea.latitude.is_some() {
-                                    nmea.latitude.unwrap() as f32
-                                } else {
-                                    0.
-                                },
-                                if nmea.longitude.is_some() {
-                                    nmea.longitude.unwrap() as f32
-                                } else {
-                                    0.
-                                }
-                            );
-                            let speed = if nmea.speed_over_ground.is_some() {
-                                // kn/h -> km/h
-                                (nmea.speed_over_ground.unwrap() as f32) * 1.852_f32
-                            } else {
-                                0.
-                            };
-                            let timestamp = if nmea.fix_timestamp().is_some() {
-                                nmea.fix_timestamp().unwrap()
-                            } else {
-                                NaiveTime::from_hms_opt(8, 0, 0).unwrap()
-                            };
-
-                            let anemometer_data = GLOBAL_ANEMOMETER_DATA.lock().unwrap();
-                            let rps = anemometer_data.rps;
-                            drop(anemometer_data);
-
-                            info!("NMEA speed: {:.1} km/h", speed);
-                            info!("Anemometer: {:.1} rps", rps);
-                            info!("Timestamp : {}", timestamp);
-                            tx.send(SysLoopMsg::NmeaData {
-                                data: format!("{},{:5.2},{:5.2}\n", timestamp, speed, rps),
-                            })
-                            .unwrap();
-                            tx.send(SysLoopMsg::DisplayMsg {
-                                cmd: DisplayCmd {
-                                    widget: WidgetName::GpsSpeed,
-                                    text: format!("GPS: {:4.1}", speed),
-                                },
-                            })
-                            .unwrap();
-                            tx.send(SysLoopMsg::DisplayMsg {
-                                cmd: DisplayCmd {
-                                    widget: WidgetName::WindSpeed,
-                                    text: format!("Sen: {:4.1}", rps),
-                                },
-                            })
-                            .unwrap();
-                        }
-                        Err(e) => info!("******* NEMEA error : {e:?} *******"),
-                    }
-                }
-                esp_idf_hal::delay::FreeRtos::delay_ms(1000);
-            }
-        })
-        .unwrap();
-
-    info!(" ************** After UART backgound thread started");
+        info!(" ************** After UART backgound thread started");
     }}
 
     let _wifi_event_sub = sysloop.subscribe(move |event: &WifiEvent| match event {
@@ -334,8 +327,8 @@ fn main() -> anyhow::Result<()> {
 
     loop {
         match rx.try_recv() {
+            #[cfg(feature = "calibration")]
             Ok(SysLoopMsg::DisplayMsg { cmd }) => {
-                #[cfg(feature = "tft")]
                 match cmd.widget {
                     WidgetName::GpsSpeed => {
                         layout_mgr
@@ -349,14 +342,12 @@ fn main() -> anyhow::Result<()> {
                     }
                 };
             }
-
+            #[cfg(feature = "calibration")]
             Ok(SysLoopMsg::NmeaData { data }) => {
-                #[cfg(feature = "sdcard")]
                 sd_card.write(data);
             }
-            #[cfg(feature = "neopixel")]
+            #[cfg(feature = "calibration")]
             Ok(SysLoopMsg::NeopixelMsg { color }) => {
-                #[cfg(feature = "neopixel")]
                 status_led.write(color)?;
             }
             Ok(SysLoopMsg::OtaUpdateStarted) => {
@@ -366,18 +357,18 @@ fn main() -> anyhow::Result<()> {
                 info!("mpsc loop: WifiDisconnect received");
 
                 httpd.clear();
-                #[cfg(feature = "neopixel")]
+                #[cfg(feature = "calibration")]
                 tx2.send(SysLoopMsg::NeopixelMsg { color: RED })?;
-                #[cfg(feature = "tft")]
+                #[cfg(feature = "calibration")]
                 layout_mgr.draw_ip_address(&mut display, " ").unwrap();
             }
             Ok(SysLoopMsg::IpAddressAsquired { ip }) => {
-                info!("mpsc loop: IpAddressAsquired received");
+                info!("mpsc loop: IpAddressAsquired received: {}", ip.to_string());
                 let tx4 = tx3.clone();
-                #[cfg(feature = "neopixel")]
+                #[cfg(feature = "calibration")]
                 tx3.send(SysLoopMsg::NeopixelMsg { color: DARK_GREEN })?;
 
-                #[cfg(feature = "tft")]
+                #[cfg(feature = "calibration")]
                 layout_mgr
                     .draw_ip_address(&mut display, format!("IP: {}", ip.to_string()).as_str())
                     .unwrap();
@@ -413,7 +404,7 @@ fn main() -> anyhow::Result<()> {
 
                 if let Err(err) =
                     s.fn_handler("/api/ota", embedded_svc::http::Method::Post, move |req| {
-                        #[cfg(feature = "neopixel")]
+                        #[cfg(feature = "calibration")]
                         tx4.send(SysLoopMsg::NeopixelMsg { color: BLUE })?;
                         tx4.send(SysLoopMsg::OtaUpdateStarted)?;
                         esp_idf_hal::delay::FreeRtos::delay_ms(100);
@@ -456,7 +447,7 @@ fn main() -> anyhow::Result<()> {
     }
 }
 
-#[cfg(feature = "tft")]
+#[cfg(feature = "calibration")]
 fn turn_backlight_on(p: AnyOutputPin) {
     let mut backlight = PinDriver::output(p).unwrap();
 
@@ -466,7 +457,7 @@ fn turn_backlight_on(p: AnyOutputPin) {
     mem::forget(backlight); // TODO: For now
 }
 
-#[cfg(feature = "gps")]
+#[cfg(feature = "calibration")]
 fn print_stack_remaining_size(stack_size: u32) {
     let stack = unsafe { esp_idf_sys::uxTaskGetStackHighWaterMark(core::ptr::null_mut()) };
     let left = stack_size - stack;

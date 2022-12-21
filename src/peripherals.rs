@@ -1,45 +1,46 @@
 use esp_idf_hal::gpio::*;
 use esp_idf_hal::modem::Modem;
 use esp_idf_hal::peripherals::Peripherals;
+#[cfg(feature = "calibration")]
 use esp_idf_hal::rmt::CHANNEL0;
 
-#[cfg(any(feature = "sdcard", feature = "tft"))]
+#[cfg(any(feature = "calibration", feature = "calibration"))]
 use esp_idf_hal::spi::*;
 
-#[cfg(feature = "gps")]
+#[cfg(feature = "calibration")]
 use esp_idf_hal::uart::*;
 
-#[cfg(feature = "tft")]
+#[cfg(feature = "calibration")]
 pub struct SystemPeripherals<VDD, NEOPIXELPIN, CHANNEL> {
     pub neopixel: NeoPixelPeripherals<NEOPIXELPIN, CHANNEL>,
 
     pub display: DisplaySpiPeripherals<VDD>,
     pub display_backlight: AnyOutputPin,
 
-    #[cfg(feature = "sdcard")]
+    #[cfg(feature = "calibration")]
     pub sdcard: MicroSDCardPeripherals,
 
-    #[cfg(feature = "gps")]
+    #[cfg(feature = "calibration")]
     pub gps: GpsPeripherals,
 
-    #[cfg(any(feature = "sdcard", feature = "tft"))]
+    #[cfg(any(feature = "calibration", feature = "calibration"))]
     pub spi_bus: SpiBusPeripherals,
 
     pub pulse_counter: AnemometerPulseCounterPeripherals,
     pub modem: Modem,
 }
 
-#[cfg(all(not(feature = "tft"), feature = "neopixel"))]
+#[cfg(all(not(feature = "calibration"), feature = "calibration"))]
 pub struct SystemPeripherals<NEOPIXELPIN, CHANNEL> {
     pub neopixel: NeoPixelPeripherals<NEOPIXELPIN, CHANNEL>,
 
-    #[cfg(feature = "sdcard")]
+    #[cfg(feature = "calibration")]
     pub sdcard: MicroSDCardPeripherals,
 
-    #[cfg(feature = "gps")]
+    #[cfg(feature = "calibration")]
     pub gps: GpsPeripherals,
 
-    #[cfg(feature = "sdcard")]
+    #[cfg(feature = "calibration")]
     pub spi_bus: SpiBusPeripherals,
 
     pub pulse_counter: AnemometerPulseCounterPeripherals,
@@ -67,7 +68,7 @@ impl SystemPeripherals {
     }
 }
 
-#[cfg(feature = "tft")]
+#[cfg(feature = "calibration")]
 impl SystemPeripherals<Gpio21, Gpio33, CHANNEL0> {
     pub fn take() -> Self {
         let peripherals = Peripherals::take().unwrap();
@@ -84,7 +85,7 @@ impl SystemPeripherals<Gpio21, Gpio33, CHANNEL0> {
                 channel: peripherals.rmt.channel0,
             },
 
-            #[cfg(feature = "tft")]
+            #[cfg(feature = "calibration")]
             display: DisplaySpiPeripherals {
                 control: DisplayControlPeripherals {
                     dc: peripherals.pins.gpio39.into(),
@@ -94,15 +95,15 @@ impl SystemPeripherals<Gpio21, Gpio33, CHANNEL0> {
                 vdd: peripherals.pins.gpio21,
             },
 
-            #[cfg(feature = "tft")]
+            #[cfg(feature = "calibration")]
             display_backlight: peripherals.pins.gpio45.into(),
 
-            #[cfg(feature = "sdcard")]
+            #[cfg(feature = "calibration")]
             sdcard: MicroSDCardPeripherals {
                 cs: peripherals.pins.gpio10.into(), // TODO: check
             },
 
-            #[cfg(feature = "gps")]
+            #[cfg(feature = "calibration")]
             gps: GpsPeripherals {
                 tx: peripherals.pins.gpio1.into(),
                 rx: peripherals.pins.gpio2.into(),
@@ -112,7 +113,7 @@ impl SystemPeripherals<Gpio21, Gpio33, CHANNEL0> {
                 pulse: peripherals.pins.gpio5.into(),
             },
 
-            #[cfg(any(feature = "sdcard", feature = "tft"))]
+            #[cfg(any(feature = "calibration", feature = "calibration"))]
             spi_bus: SpiBusPeripherals {
                 driver: std::rc::Rc::new(
                     SpiDriver::new(
@@ -130,7 +131,7 @@ impl SystemPeripherals<Gpio21, Gpio33, CHANNEL0> {
     }
 }
 
-#[cfg(all(not(feature = "tft"), feature = "neopixel"))]
+#[cfg(all(not(feature = "calibration"), feature = "calibration"))]
 impl SystemPeripherals<Gpio33, CHANNEL0> {
     pub fn take() -> Self {
         let peripherals = Peripherals::take().unwrap();
@@ -147,12 +148,12 @@ impl SystemPeripherals<Gpio33, CHANNEL0> {
                 channel: peripherals.rmt.channel0,
             },
 
-            #[cfg(feature = "sdcard")]
+            #[cfg(feature = "calibration")]
             sdcard: MicroSDCardPeripherals {
                 cs: peripherals.pins.gpio10.into(), // TODO: check
             },
 
-            #[cfg(feature = "gps")]
+            #[cfg(feature = "calibration")]
             gps: GpsPeripherals {
                 tx: peripherals.pins.gpio1.into(),
                 rx: peripherals.pins.gpio2.into(),
@@ -162,7 +163,7 @@ impl SystemPeripherals<Gpio33, CHANNEL0> {
                 pulse: peripherals.pins.gpio5.into(),
             },
 
-            #[cfg(feature = "sdcard")]
+            #[cfg(feature = "calibration")]
             spi_bus: SpiBusPeripherals {
                 driver: std::rc::Rc::new(
                     SpiDriver::new(
@@ -180,38 +181,38 @@ impl SystemPeripherals<Gpio33, CHANNEL0> {
     }
 }
 
-#[cfg(feature = "neopixel")]
+#[cfg(feature = "calibration")]
 pub struct NeoPixelPeripherals<NEOPIXELPIN, CHANNEL> {
     pub dc: AnyOutputPin,
     pub pin: NEOPIXELPIN,
     pub channel: CHANNEL,
 }
 
-#[cfg(feature = "tft")]
+#[cfg(feature = "calibration")]
 pub struct DisplayControlPeripherals {
     pub dc: AnyOutputPin,
     pub rst: AnyOutputPin,
 }
-#[cfg(feature = "tft")]
+#[cfg(feature = "calibration")]
 pub struct DisplaySpiPeripherals<VDD> {
     pub control: DisplayControlPeripherals,
     pub cs: AnyOutputPin,
     pub vdd: VDD,
 }
 
-#[cfg(feature = "gps")]
+#[cfg(feature = "calibration")]
 pub struct GpsPeripherals {
     pub tx: AnyOutputPin,
     pub rx: AnyInputPin,
     pub uart1: UART1,
 }
 
-#[cfg(any(feature = "sdcard", feature = "tft"))]
+#[cfg(any(feature = "calibration", feature = "calibration"))]
 pub struct SpiBusPeripherals {
     pub driver: std::rc::Rc<SpiDriver<'static>>,
 }
 
-#[cfg(feature = "sdcard")]
+#[cfg(feature = "calibration")]
 pub struct MicroSDCardPeripherals {
     pub cs: AnyOutputPin,
 }
