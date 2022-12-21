@@ -28,7 +28,7 @@ pub mod anemometer {
         _pin: PinDriver<'static, P, Input>,
     }
 
-    impl<'d, P: InputPin> AnemometerDriver<P> {
+    impl<'d, P: InputPin + OutputPin> AnemometerDriver<P> {
         pub fn new(
             pin: impl Peripheral<P = P> + 'static,
         ) -> Result<AnemometerDriver<P>, InitError> {
@@ -54,12 +54,14 @@ pub mod anemometer {
         ANEMOMETER_PULSCOUNT.fetch_add(1, Ordering::Relaxed);
     }
 
-    fn subscribe_pin<'d, P: InputPin>(
+    fn subscribe_pin<'d, P: InputPin + OutputPin>(
         pin: impl Peripheral<P = P> + 'd,
         notify: impl Fn() + 'static,
     ) -> Result<PinDriver<'d, P, Input>, InitError> {
         let mut pin = PinDriver::input(pin)?;
 
+        // in case the input pin is not connected to any ciruit
+        pin.set_pull(Pull::Down)?;
         pin.set_interrupt_type(InterruptType::NegEdge)?;
 
         unsafe {

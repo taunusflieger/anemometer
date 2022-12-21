@@ -51,6 +51,8 @@ use std::net::Ipv4Addr;
 
 #[cfg(any(feature = "sdcard", feature = "tft"))]
 use std::rc::Rc;
+
+#[cfg(any(feature = "sdcard", feature = "tft"))]
 use std::str;
 use std::sync::mpsc;
 use std::{thread::sleep, time::Duration};
@@ -62,6 +64,8 @@ mod errors;
 #[cfg(feature = "gps")]
 mod gps_mtk3339;
 mod lazy_http_server;
+
+#[cfg(feature = "neopixel")]
 mod neopixel;
 mod peripherals;
 
@@ -111,12 +115,16 @@ fn main() -> anyhow::Result<()> {
     esp_idf_sys::link_patches();
     esp_idf_svc::log::EspLogger::initialize_default();
 
+    info!("Starting ...");
     let peripherals = peripherals::SystemPeripherals::take();
 
+    cfg_if::cfg_if! {
+        if #[cfg(feature = "neopixel")] {
     let mut status_led = neopixel::ws2812::NeoPixel::new(peripherals.neopixel)?;
     status_led.power_on(true);
 
     status_led.write(DARK_ORANGE)?;
+    }}
 
     #[cfg(feature = "tft")]
     let display_peripherals = peripherals.display;
@@ -154,8 +162,8 @@ fn main() -> anyhow::Result<()> {
     }
 
     // Initialize data capture from anemometer
-    let mut anemometer = AnemometerDriver::new(anemometer_peripherals.pulse).unwrap();
-    let _anemometer_timer = anemometer.set_measurement_timer().unwrap();
+    //let mut anemometer = AnemometerDriver::new(anemometer_peripherals.pulse).unwrap();
+    //let _anemometer_timer = anemometer.set_measurement_timer().unwrap();
 
     let httpd = lazy_http_server::lazy_init_http_server::LazyInitHttpServer::new();
     let (tx, rx) = mpsc::channel::<SysLoopMsg>();
@@ -357,6 +365,7 @@ fn main() -> anyhow::Result<()> {
                 sd_card.write(data);
             }
             Ok(SysLoopMsg::NeopixelMsg { color }) => {
+                #[cfg(feature = "neopixel")]
                 status_led.write(color)?;
             }
             Ok(SysLoopMsg::OtaUpdateStarted) => {

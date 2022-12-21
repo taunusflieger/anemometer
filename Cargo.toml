@@ -18,7 +18,8 @@ debug = true    # Symbols are nice and they don't increase the size on Flash
 opt-level = "z"
 
 [features]
-default = ["gps", "tft", "sdcard"]
+#default = ["gps", "tft", "sdcard"]
+default = ["tft", "gps", "sdcard", "neopixel"]
 experimental = ["esp-idf-svc/experimental", "embedded-svc/experimental"]
 tft = [
     "mipidsi",
@@ -31,16 +32,24 @@ tft = [
 ]
 gps = ["nmea"]
 sdcard = ["embedded-sdmmc"]
+production = []
+neopixel = []
 
 [dependencies]
 embedded-graphics = { version = "0.7.1", optional = true }
 embedded-graphics-core = { version = "0.3.3", optional = true }
 
 embedded-hal = { git = "https://github.com/rust-embedded/embedded-hal", tag = "v1.0.0-alpha.9" }
-embedded-svc = { verion = "0.23", features = ["nightly", "experimental"] }
-esp-idf-sys = { version = "0.31.12", features = ["binstart"] }
-esp-idf-svc = { version = "0.43", features = ["nightly", "experimental"] }
-esp-idf-hal = { version = "0.39", features = [] }
+embedded-svc = { verion = "0.24", features = ["nightly", "experimental"] }
+esp-idf-sys = { git = "https://github.com/esp-rs/esp-idf-sys", features = [
+    "binstart",
+] }
+esp-idf-svc = { git = "https://github.com/esp-rs/esp-idf-svc", features = [
+    "nightly",
+    "experimental",
+] }
+esp-idf-hal = { git = "https://github.com/taunusflieger/esp-idf-hal", features = [
+] }
 display-interface = { version = "0.4", optional = true }
 display-interface-spi = { version = "0.4", optional = true }
 embedded-sdmmc = { git = "https://github.com/rust-embedded-community/embedded-sdmmc-rs.git", optional = true }
@@ -71,5 +80,6 @@ anyhow = "1"
 partition_table = "partitions.csv"
 
 [patch.crates-io]
-#esp-idf-sys = { git = "https://github.com/esp-rs/esp-idf-sys" }
+esp-idf-sys = { git = "https://github.com/esp-rs/esp-idf-sys" }
 embedded-hal = { git = "https://github.com/rust-embedded/embedded-hal", tag = "v1.0.0-alpha.9" }
+esp-idf-hal = { git = "https://github.com/taunusflieger/esp-idf-hal" }

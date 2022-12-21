@@ -13,13 +13,14 @@ linker = "ldproxy"
 
 [target.xtensa-esp32s3-espidf]
 linker = "ldproxy"
+rustflags = ["--cfg", "espidf_time64"]
 
 [target.riscv32imc-esp-espidf]
 linker = "ldproxy"
 
 # Future - necessary for the experimental "native build" of esp-idf-sys with ESP32C3
 # See also https://github.com/ivmarkov/embuild/issues/16
-rustflags = ["-C", "default-linker-libraries"]
+rustflags = ["-C", "default-linker-libraries", "--cfg", "espidf_time64"]
 
 [unstable]
 
@@ -27,6 +28,6 @@ build-std = ["std", "panic_abort"]
 #build-std-features = ["panic_immediate_abort"] # Required for older ESP-IDF versions without a realpath implementation
 
 [env]
-ESP_IDF_VERSION = { value = "branch:release/v4.4" }
-#ESP_IDF_VERSION = { value = "branch:release/v5.0" }
+#ESP_IDF_VERSION = { value = "branch:release/v4.4" }
+ESP_IDF_VERSION = { value = "branch:release/v5.0" }
 #ESP_IDF_VERSION = { value = "branch:master" }

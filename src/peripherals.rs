@@ -29,7 +29,7 @@ pub struct SystemPeripherals<VDD, NEOPIXELPIN, CHANNEL> {
     pub modem: Modem,
 }
 
-#[cfg(not(feature = "tft"))]
+#[cfg(all(not(feature = "tft"), feature = "neopixel"))]
 pub struct SystemPeripherals<NEOPIXELPIN, CHANNEL> {
     pub neopixel: NeoPixelPeripherals<NEOPIXELPIN, CHANNEL>,
 
@@ -44,6 +44,27 @@ pub struct SystemPeripherals<NEOPIXELPIN, CHANNEL> {
 
     pub pulse_counter: AnemometerPulseCounterPeripherals,
     pub modem: Modem,
+}
+
+#[cfg(feature = "production")]
+pub struct SystemPeripherals {
+    pub pulse_counter: AnemometerPulseCounterPeripherals,
+    pub modem: Modem,
+}
+
+#[cfg(feature = "production")]
+impl SystemPeripherals {
+    pub fn take() -> Self {
+        let peripherals = Peripherals::take().unwrap();
+
+        SystemPeripherals {
+            pulse_counter: AnemometerPulseCounterPeripherals {
+                pulse: peripherals.pins.gpio5.into(),
+            },
+
+            modem: peripherals.modem,
+        }
+    }
 }
 
 #[cfg(feature = "tft")]
@@ -109,7 +130,7 @@ impl SystemPeripherals<Gpio21, Gpio33, CHANNEL0> {
     }
 }
 
-#[cfg(not(feature = "tft"))]
+#[cfg(all(not(feature = "tft"), feature = "neopixel"))]
 impl SystemPeripherals<Gpio33, CHANNEL0> {
     pub fn take() -> Self {
         let peripherals = Peripherals::take().unwrap();
@@ -159,6 +180,7 @@ impl SystemPeripherals<Gpio33, CHANNEL0> {
     }
 }
 
+#[cfg(feature = "neopixel")]
 pub struct NeoPixelPeripherals<NEOPIXELPIN, CHANNEL> {
     pub dc: AnyOutputPin,
     pub pin: NEOPIXELPIN,
@@ -195,5 +217,5 @@ pub struct MicroSDCardPeripherals {
 }
 
 pub struct AnemometerPulseCounterPeripherals {
-    pub pulse: AnyInputPin,
+    pub pulse: AnyIOPin,
 }
