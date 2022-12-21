@@ -70,7 +70,7 @@ jobs:
         if: matrix.target == 'riscv32imc-esp-espidf'
 
       - name: Build | Compile (calibration)
-         env:
+        env:
           RUSTFLAGS: "${{ matrix.idf-version == 'release/v5.0' && '--cfg espidf_time64' || ''}}"
           RUST_ESP32_ANEMOMETER_WIFI_SSID: ""
           RUST_ESP32_ANEMOMETER_WIFI_PASS: ""
