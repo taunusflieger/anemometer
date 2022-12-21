@@ -26,7 +26,7 @@ jobs:
 
     steps:
       - name: Setup | Checkout
-        uses: actions/checkout@v3
+        uses: actions/checkout@v2
 
       # fixes missing libclang error
       - name: Setup | libncurses5
@@ -36,7 +36,7 @@ jobs:
         uses: actions-rs/toolchain@v1
         with:
           default: true
-          toolchain: ${{ env.rust_nightly_toolchain }}
+          toolchain: ${{ env.rust_toolchain }}
           components: rustfmt, clippy
         if: matrix.target == 'riscv32imc-esp-espidf'
 
