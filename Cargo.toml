@@ -18,7 +18,6 @@ debug = true    # Symbols are nice and they don't increase the size on Flash
 opt-level = "z"
 
 [features]
-default = ["calibration"]
 production = []
 calibration = [
     "mipidsi",
