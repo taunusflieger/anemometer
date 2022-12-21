@@ -61,7 +61,7 @@ pub mod anemometer {
         let mut pin = PinDriver::input(pin)?;
 
         // in case the input pin is not connected to any ciruit
-        pin.set_pull(Pull::Down)?;
+        //pin.set_pull(Pull::Down)?;
         pin.set_interrupt_type(InterruptType::NegEdge)?;
 
         unsafe {

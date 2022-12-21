@@ -43,6 +43,7 @@ use log::info;
 
 #[cfg(feature = "gps")]
 use nmea;
+#[cfg(feature = "neopixel")]
 use smart_leds::{colors::*, RGB8};
 
 #[cfg(feature = "tft")]
@@ -81,13 +82,8 @@ sys::esp_app_desc!();
 #[cfg(feature = "tft")]
 const FIRMWARE_VERSION: &str = env!("CARGO_PKG_VERSION");
 
-#[toml_cfg::toml_config]
-pub struct Config {
-    #[default("")]
-    wifi_ssid: &'static str,
-    #[default("")]
-    wifi_psk: &'static str,
-}
+const SSID: &str = env!("RUST_ESP32_ANEMOMETER_WIFI_SSID");
+const PASS: &str = env!("RUST_ESP32_ANEMOMETER_WIFI_PASS");
 
 #[allow(dead_code)]
 enum WidgetName {
@@ -104,15 +100,23 @@ struct DisplayCmd {
 #[allow(dead_code)]
 enum SysLoopMsg {
     WifiDisconnect,
-    IpAddressAsquired { ip: Ipv4Addr },
-    NeopixelMsg { color: RGB8 },
-    DisplayMsg { cmd: DisplayCmd },
+    IpAddressAsquired {
+        ip: Ipv4Addr,
+    },
+    #[cfg(feature = "neopixel")]
+    NeopixelMsg {
+        color: RGB8,
+    },
+    DisplayMsg {
+        cmd: DisplayCmd,
+    },
     OtaUpdateStarted,
-    NmeaData { data: String },
+    NmeaData {
+        data: String,
+    },
 }
 
 fn main() -> anyhow::Result<()> {
-    esp_idf_sys::link_patches();
     esp_idf_svc::log::EspLogger::initialize_default();
 
     info!("Starting ...");
@@ -162,21 +166,13 @@ fn main() -> anyhow::Result<()> {
     }
 
     // Initialize data capture from anemometer
-    //let mut anemometer = AnemometerDriver::new(anemometer_peripherals.pulse).unwrap();
-    //let _anemometer_timer = anemometer.set_measurement_timer().unwrap();
+    let mut anemometer = AnemometerDriver::new(anemometer_peripherals.pulse).unwrap();
+    let _anemometer_timer = anemometer.set_measurement_timer().unwrap();
 
     let httpd = lazy_http_server::lazy_init_http_server::LazyInitHttpServer::new();
     let (tx, rx) = mpsc::channel::<SysLoopMsg>();
 
-    println!("Wifi name {}", CONFIG.wifi_ssid);
-    let mut auth_method = AuthMethod::WPA2WPA3Personal; // Todo: add this setting - router dependent
-    if CONFIG.wifi_ssid.is_empty() {
-        anyhow::bail!("missing WiFi name")
-    }
-    if CONFIG.wifi_psk.is_empty() {
-        auth_method = AuthMethod::None;
-        info!("Wifi password is empty");
-    }
+    info!("Wifi name {}", SSID);
 
     let nvs_default_partition = EspDefaultNvsPartition::take()?;
     let sysloop = EspSystemEventLoop::take()?;
@@ -188,25 +184,19 @@ fn main() -> anyhow::Result<()> {
     )?;
 
     wifi.set_configuration(&wifi::Configuration::Client(ClientConfiguration {
-        ssid: CONFIG.wifi_ssid.into(),
-        password: CONFIG.wifi_psk.into(),
-        auth_method,
+        ssid: SSID.into(),
+        password: PASS.into(),
+        auth_method: AuthMethod::WPA2WPA3Personal,
         ..Default::default()
     }))?;
-
-    let wait = WifiWait::new(&sysloop)?;
 
     wifi.start()?;
 
     // disable power save
     esp!(unsafe { esp_wifi_set_ps(wifi_ps_type_t_WIFI_PS_NONE) })?;
 
-    wait.wait(|| wifi.is_started().unwrap());
-
-    sleep(Duration::from_millis(2000));
-
-    info!("Wifi started");
     wifi.connect()?;
+    info!("Connecting wifi ...");
 
     let tx0 = tx.clone();
     let tx1 = tx.clone();
@@ -364,6 +354,7 @@ fn main() -> anyhow::Result<()> {
                 #[cfg(feature = "sdcard")]
                 sd_card.write(data);
             }
+            #[cfg(feature = "neopixel")]
             Ok(SysLoopMsg::NeopixelMsg { color }) => {
                 #[cfg(feature = "neopixel")]
                 status_led.write(color)?;
@@ -375,6 +366,7 @@ fn main() -> anyhow::Result<()> {
                 info!("mpsc loop: WifiDisconnect received");
 
                 httpd.clear();
+                #[cfg(feature = "neopixel")]
                 tx2.send(SysLoopMsg::NeopixelMsg { color: RED })?;
                 #[cfg(feature = "tft")]
                 layout_mgr.draw_ip_address(&mut display, " ").unwrap();
@@ -382,7 +374,7 @@ fn main() -> anyhow::Result<()> {
             Ok(SysLoopMsg::IpAddressAsquired { ip }) => {
                 info!("mpsc loop: IpAddressAsquired received");
                 let tx4 = tx3.clone();
-
+                #[cfg(feature = "neopixel")]
                 tx3.send(SysLoopMsg::NeopixelMsg { color: DARK_GREEN })?;
 
                 #[cfg(feature = "tft")]
@@ -421,6 +413,7 @@ fn main() -> anyhow::Result<()> {
 
                 if let Err(err) =
                     s.fn_handler("/api/ota", embedded_svc::http::Method::Post, move |req| {
+                        #[cfg(feature = "neopixel")]
                         tx4.send(SysLoopMsg::NeopixelMsg { color: BLUE })?;
                         tx4.send(SysLoopMsg::OtaUpdateStarted)?;
                         esp_idf_hal::delay::FreeRtos::delay_ms(100);
