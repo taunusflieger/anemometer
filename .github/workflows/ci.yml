@@ -9,7 +9,7 @@ on:
     - cron: '50 4 * * *'
     
 env:
-  rust_nightly_toolchain: nightly
+  rust_toolchain: nightly
 
 jobs:
   compile:
@@ -26,7 +26,7 @@ jobs:
 
     steps:
       - name: Setup | Checkout
-        uses: actions/checkout@v3
+        uses: actions/checkout@v2
 
       # fixes missing libclang error
       - name: Setup | libncurses5
@@ -36,12 +36,12 @@ jobs:
         uses: actions-rs/toolchain@v1
         with:
           default: true
-          toolchain: ${{ env.rust_nightly_toolchain }}
+          toolchain: ${{ env.rust_toolchain }}
           components: rustfmt, clippy
         if: matrix.target == 'riscv32imc-esp-espidf'
 
       - name: Setup | Std
-        run: rustup component add rust-src --toolchain ${{ env.rust_nightly_toolchain }}-x86_64-unknown-linux-gnu
+        run: rustup component add rust-src --toolchain ${{ env.rust_toolchain }}-x86_64-unknown-linux-gnu
         if: matrix.target == 'riscv32imc-esp-espidf'
 
       - name: Install Rust for Xtensa
@@ -61,7 +61,7 @@ jobs:
 
       - name: Build | Compile  (production)
         env:
-          RUSTFLAGS: "${{ matrix.idf-version == 'release/v5.0' && '--cfg espidf_time64' || ''}}"
+          RUSTFLAGS: "${{ matrix.idf-version == 'release/v5.0' && '--cfg espidf_time64' || ''}} ${{ matrix.target == 'riscv32imc-esp-espidf' && '-C default-linker-libraries' || ''}}"
           RUST_ESP32_ANEMOMETER_WIFI_SSID: ""
           RUST_ESP32_ANEMOMETER_WIFI_PASS: ""
           ESP_IDF_VERSION: ${{ matrix.idf-version }}
@@ -70,7 +70,7 @@ jobs:
         if: matrix.target == 'riscv32imc-esp-espidf'
 
       - name: Build | Compile (calibration)
-         env:
+        env:
           RUSTFLAGS: "${{ matrix.idf-version == 'release/v5.0' && '--cfg espidf_time64' || ''}}"
           RUST_ESP32_ANEMOMETER_WIFI_SSID: ""
           RUST_ESP32_ANEMOMETER_WIFI_PASS: ""
