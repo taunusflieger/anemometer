@@ -61,7 +61,7 @@ jobs:
 
       - name: Build | Compile  (production)
         env:
-          RUSTFLAGS: "${{ matrix.idf-version == 'release/v5.0' && '--cfg espidf_time64' || ''}}"
+          RUSTFLAGS: "${{ matrix.idf-version == 'release/v5.0' && '--cfg espidf_time64' || ''}} ${{ matrix.target == 'riscv32imc-esp-espidf' && '-C default-linker-libraries' || ''}}"
           RUST_ESP32_ANEMOMETER_WIFI_SSID: ""
           RUST_ESP32_ANEMOMETER_WIFI_PASS: ""
           ESP_IDF_VERSION: ${{ matrix.idf-version }}
