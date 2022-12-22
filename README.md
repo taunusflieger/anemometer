@@ -10,7 +10,7 @@ This is WIP - should lead to a sensor node for an anemometer. The anemometer nee
 
 ![Adafruit Feather ESP32-S3 TFT](assets/IMG_2074.jpeg)
 
-<img src="https:/https://raw.githubusercontent.com//taunusflieger/anemometer/blob/master/assets/IMG_2120.jpeg width="60%">
+<img src="https://raw.githubusercontent.com//taunusflieger/anemometer/blob/master/assets/IMG_2120.jpeg width="60%">
                                                                                                                          
 ## Scope
 ### Technical
