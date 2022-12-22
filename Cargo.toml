@@ -40,9 +40,7 @@ embedded-graphics-core = { version = "0.3.3", optional = true }
 
 embedded-hal = { git = "https://github.com/rust-embedded/embedded-hal", tag = "v1.0.0-alpha.9" }
 embedded-svc = { version = "0.24", features = ["nightly", "experimental"] }
-esp-idf-sys = { git = "https://github.com/esp-rs/esp-idf-sys", features = [
-    "binstart",
-] }
+esp-idf-sys = { version = "0.32.1", features = ["binstart"] }
 esp-idf-svc = { git = "https://github.com/esp-rs/esp-idf-svc", features = [
     "nightly",
     "experimental",
@@ -78,6 +76,6 @@ anyhow = "1"
 partition_table = "partitions.csv"
 
 [patch.crates-io]
-esp-idf-sys = { git = "https://github.com/esp-rs/esp-idf-sys" }
+#esp-idf-sys = { git = "https://github.com/esp-rs/esp-idf-sys" }
 embedded-hal = { git = "https://github.com/rust-embedded/embedded-hal", tag = "v1.0.0-alpha.9" }
 esp-idf-hal = { git = "https://github.com/taunusflieger/esp-idf-hal" }
