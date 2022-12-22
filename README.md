@@ -1,4 +1,4 @@
-# ESP32-C3 / S3 Espressif IDF OTA Experiment
+# ESP32-C3 / S3 Espressif based 3D printed Anemometer
 [![CI](https://github.com/taunusflieger/anemometer/actions/workflows/ci.yml/badge.svg)](https://github.com/taunusflieger/anemometer/actions/workflows/ci.yml)
 
 
@@ -7,8 +7,6 @@
 This experiment uses IDF OTA functionality in Rust on an Adafruit ESP32-S3 TFT Board
 
 This is WIP - should lead to a sensor node for an anemometer. The anemometer needs to be calibrated. This will be done by moving (driving) the anemometer an comparing the rotation speed with parallel recorded GPS signal.
-
-![Adafruit Feather ESP32-S3 TFT](assets/IMG_2074.jpeg)
 
 ## Scope
 ### Technical
@@ -75,6 +73,19 @@ The new version will see there is no later version online to flash.
 - [ ] Implement MQTT for data ingress to AWS
 - [ ] Implement sleep mode (which one ?)
 - [ ] Implement new UI for the AWS lamda based weather station App
+
+
+## Hardware Images
+
+
+The board-setup used for the calibration use-case:
+
+![Adafruit Feather ESP32-S3 TFT](assets/IMG_2074.jpeg)
+
+The 3D printed anemometer:
+
+![Adafruit Feather ESP32-S3 TFT](assets/IMG_2120.jpeg) ![Adafruit Feather ESP32-S3 TFT](assets/IMG_2121.jpeg)
+
 
 ## License
 
