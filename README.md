@@ -8,8 +8,8 @@ This experiment uses IDF OTA functionality in Rust on an Adafruit ESP32-S3 TFT B
 
 This is WIP - should lead to a sensor node for an anemometer. The anemometer needs to be calibrated. This will be done by moving (driving) the anemometer an comparing the rotation speed with parallel recorded GPS signal.
 
-![Adafruit Feather ESP32-S3 TFT](assets/IMG_2074.jpeg)
-
+![Adafruit Feather ESP32-S3 TFT](assets/IMG_2074.jpeg =200)
+<img src="https:/https://raw.githubusercontent.com//taunusflieger/anemometer/blob/master/assets/IMG_2120.jpeg width="60%">
 ## Scope
 ### Technical
 - relayable wifi connection, automatic reconnect
