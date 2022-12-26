@@ -671,7 +671,7 @@ dependencies = [
 [[package]]
 name = "esp-idf-svc"
 version = "0.45.0"
-source = "git+https://github.com/esp-rs/esp-idf-svc#0a73517af39e695ec5f0b81bb2f7eb13c1386758"
+source = "git+https://github.com/taunusflieger/esp-idf-svc#c392c5c2e0dd57ae7827ff1f6aa81fea6def6f13"
 dependencies = [
  "anyhow",
  "embedded-svc",
