@@ -52,9 +52,16 @@ jobs:
           ldproxy: true
         if: matrix.target != 'riscv32imc-esp-espidf'
 
-      - name: Build | Fmt Check
+      - name: Build | Fmt Check (production)
         run: cargo fmt -- --check
-      
+        working-directory: ./anemometer-production
+        if: matrix.target == 'riscv32imc-esp-espidf'
+
+      - name: Build | Fmt Check (calibration)
+        run: cargo fmt -- --check
+        working-directory: ./anemometer-production
+        if: matrix.target == 'xtensa-esp32s3-espidf'
+        
       - name: Setup | ldproxy
         run: cargo install ldproxy   
         if: matrix.target == 'riscv32imc-esp-espidf'
