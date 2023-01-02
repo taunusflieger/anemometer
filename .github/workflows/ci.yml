@@ -36,7 +36,6 @@ jobs:
         uses: dtolnay/rust-toolchain@master
         with:
           toolchain: ${{ env.rust_toolchain }}
-          targets: riscv32imc-esp-espidf
           components: rustfmt, clippy
         if: matrix.target == 'riscv32imc-esp-espidf'
 
