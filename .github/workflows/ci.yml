@@ -49,7 +49,7 @@ jobs:
           default: true
           version: "1.66.0"
           ldproxy: true
-        if: matrix.target != 'riscv32imc-esp-espidf'
+        if: matrix.target == 'xtensa-esp32s3-espidf'
 
       - name: Build | Fmt Check (production)
         run: cargo fmt -- --check
