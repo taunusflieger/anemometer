@@ -1,0 +1,30 @@
+# The low-latency executor runs off from the main thread
+CONFIG_ESP_MAIN_TASK_STACK_SIZE=50000
+
+# Necessary, as we process Rust code on the system event loop, and sometimes run out of stack
+CONFIG_ESP_SYSTEM_EVENT_TASK_STACK_SIZE=4096
+
+# This is 10 by default. 16 is the maximum
+CONFIG_LWIP_MAX_SOCKETS=16
+
+# Enable the option to dispatch timer events directly from the timer ISR 
+# (the executor & async timer wrapper of `esp-idf-svc` are compatible with this dispatch method)
+# This has lower latency as compared to dispatching via an intermediate task
+# SAFETY: currently there is a bug in esp-idf which results in a crash in
+# long running tasks - so this needs to be disabled
+CONFIG_ESP_TIMER_SUPPORTS_ISR_DISPATCH_METHOD=n
+
+# Enable posting to event loops directly from an ISR 
+# (the event loop wrapper of `esp-idf-svc` is compatible with this, including the async postbox wrapper)
+CONFIG_ESP_EVENT_POST_FROM_ISR=y
+
+# Use this to set FreeRTOS kernel tick frequency to 1000 Hz (100 Hz by default).
+# This allows to use 1 ms granuality for thread sleeps (10 ms by default).
+#CONFIG_FREERTOS_HZ=1000
+
+# Workaround for https://github.com/espressif/esp-idf/issues/7631
+#CONFIG_MBEDTLS_CERTIFICATE_BUNDLE=n
+#CONFIG_MBEDTLS_CERTIFICATE_BUNDLE_DEFAULT_FULL=n
+
+# Enable app rollback support.
+CONFIG_BOOTLOADER_APP_ROLLBACK_ENABLE=y
