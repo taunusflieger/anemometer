@@ -1,6 +1,6 @@
 [package]
-name = "esp-async-wifi"
-version = "0.1.2"
+name = "esp32-anemometer"
+version = "0.1.21"
 authors = ["Michael Zill <michael.zill@gmail.com>"]
 edition = "2021"
 resolver = "2"
@@ -19,9 +19,10 @@ pio = ["esp-idf-sys/pio"]
 embedded-hal = { git = "https://github.com/rust-embedded/embedded-hal", tag = "v1.0.0-alpha.9" }
 embedded-svc = { version = "0.24", features = ["nightly", "experimental"] }
 esp-idf-sys = { version = "0.32.1", features = ["binstart"] }
-esp-idf-svc = { path = "../../esp-idf-svc", features = [
+esp-idf-svc = { git = "https://github.com/taunusflieger/esp-idf-svc", branch = "idf5_fixes", features = [
     "nightly",
     "experimental",
+    "embassy-time-driver",
     "embassy-time-isr-queue",
 ] }
 esp-idf-hal = { version = "0.40.1", features = [

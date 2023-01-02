@@ -684,31 +684,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "esp-async-wifi"
-version = "0.1.2"
-dependencies = [
- "anyhow",
- "channel-bridge",
- "critical-section",
- "edge-executor",
- "embassy-futures",
- "embassy-sync",
- "embassy-time",
- "embedded-hal 1.0.0-alpha.9 (git+https://github.com/rust-embedded/embedded-hal?tag=v1.0.0-alpha.9)",
- "embedded-svc",
- "embuild 0.30.5",
- "esp-idf-hal",
- "esp-idf-svc",
- "esp-idf-sys",
- "heapless",
- "log",
- "once_cell",
- "postcard",
- "serde",
- "static_cell",
-]
-
-[[package]]
 name = "esp-idf-hal"
 version = "0.40.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -731,6 +706,7 @@ dependencies = [
 [[package]]
 name = "esp-idf-svc"
 version = "0.45.0"
+source = "git+https://github.com/taunusflieger/esp-idf-svc?branch=idf5_fixes#447a84343ea17dead729741eef27925d9d49e41b"
 dependencies = [
  "anyhow",
  "embassy-sync",
@@ -762,6 +738,31 @@ dependencies = [
  "regex",
  "serde",
  "strum 0.24.1",
+]
+
+[[package]]
+name = "esp32-anemometer"
+version = "0.1.21"
+dependencies = [
+ "anyhow",
+ "channel-bridge",
+ "critical-section",
+ "edge-executor",
+ "embassy-futures",
+ "embassy-sync",
+ "embassy-time",
+ "embedded-hal 1.0.0-alpha.9 (git+https://github.com/rust-embedded/embedded-hal?tag=v1.0.0-alpha.9)",
+ "embedded-svc",
+ "embuild 0.30.5",
+ "esp-idf-hal",
+ "esp-idf-svc",
+ "esp-idf-sys",
+ "heapless",
+ "log",
+ "once_cell",
+ "postcard",
+ "serde",
+ "static_cell",
 ]
 
 [[package]]
