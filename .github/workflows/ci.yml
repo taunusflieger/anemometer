@@ -33,10 +33,10 @@ jobs:
         run: sudo apt-get install libncurses5
 
       - name: Setup | Rust
-        uses: actions-rs/toolchain@v1
+        uses: dtolnay/rust-toolchain@master
         with:
-          default: true
           toolchain: ${{ env.rust_toolchain }}
+          targets: riscv32imc-esp-espidf
           components: rustfmt, clippy
         if: matrix.target == 'riscv32imc-esp-espidf'
 
