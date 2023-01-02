@@ -15,6 +15,9 @@ jobs:
   compile:
     name: Compile
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ./anemometer-calibration
     strategy:
       fail-fast: false
       matrix:
