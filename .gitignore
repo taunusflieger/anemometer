@@ -2,6 +2,7 @@
 .embuild
 bin
 target
+nvs
 rust-toolchain.toml
 cfg.toml
 __pycache__

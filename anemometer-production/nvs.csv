@@ -1,0 +1,7 @@
+key,type,encoding,value
+certificates,namespace,,
+ca_cert,file,string,../../weatherStationSecrets/certificates/aws-iot-rootCA.crt
+cert,file,string,../../weatherStationSecrets/certificates/cert.pem
+priv_key,file,string,../../weatherStationSecrets/certificates/privkey.pem
+device_data,namespace,,
+device_id,data,string,56134-781-30921
