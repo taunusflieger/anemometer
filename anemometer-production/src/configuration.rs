@@ -43,7 +43,7 @@ impl AwsIoTSettings {
         let mut port_buf: [u8; 6] = [0; 6];
         nvs.get_str("port", &mut port_buf)?;
         let s = std::str::from_utf8(&port_buf).unwrap();
-        settings.port = u16::from_str_radix(&s[..s.len() - 2], 10).unwrap();
+        settings.port = (s[..s.len() - 2]).parse::<u16>().unwrap();
 
         let nvs = EspCustomNvs::new(part, "device_data", false)?;
         nvs.get_str("device_id", &mut settings.device_id)?;

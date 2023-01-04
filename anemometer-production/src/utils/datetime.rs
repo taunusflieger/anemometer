@@ -1,6 +1,4 @@
-use esp_idf_svc::sntp::*;
 use esp_idf_sys::EspError;
-use log::*;
 use std::{convert::TryFrom, time::SystemTime};
 use time::*;
 

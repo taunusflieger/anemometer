@@ -77,7 +77,7 @@ fn main() -> core::result::Result<(), InitError> {
         Some(nvs_default_partition),
     )?;
 
-    let sntp = utils::datetime::initialize();
+    let _sntp = utils::datetime::initialize();
 
     ThreadSpawnConfiguration {
         name: Some(b"mid-prio-executor\0"),
@@ -211,24 +211,19 @@ pub async fn process_wifi_state_change(
 
 pub async fn process_netif_state_change(mut state_changed_source: impl Receiver<Data = IpEvent>) {
     loop {
-        let event = state_changed_source.recv().await.unwrap();
+        if let IpEvent::DhcpIpAssigned(assignment) = state_changed_source.recv().await.unwrap() {
+            info!("IpEvent: DhcpIpAssigned: {:?}", assignment.ip_settings.ip);
 
-        match event {
-            IpEvent::DhcpIpAssigned(assignment) => {
-                info!("IpEvent: DhcpIpAssigned: {:?}", assignment.ip_settings.ip);
+            // if an IP address has been succesfully assiggned we consider
+            // the application working, no rollback required.
+            unsafe { esp_ota_mark_app_valid_cancel_rollback() };
 
-                // if an IP address has been succesfully assiggned we consider
-                // the application working, no rollback required.
-                unsafe { esp_ota_mark_app_valid_cancel_rollback() };
-
-                let mut publisher = NETWORK_EVENT_CHANNEL.publisher().unwrap();
-                let _ = publisher
-                    .send(NetworkStateChange::IpAddressAssigned {
-                        ip: assignment.ip_settings.ip,
-                    })
-                    .await;
-            }
-            _ => {}
+            let mut publisher = NETWORK_EVENT_CHANNEL.publisher().unwrap();
+            let _ = publisher
+                .send(NetworkStateChange::IpAddressAssigned {
+                    ip: assignment.ip_settings.ip,
+                })
+                .await;
         }
     }
 }
