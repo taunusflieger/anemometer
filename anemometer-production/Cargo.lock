@@ -706,7 +706,6 @@ dependencies = [
 [[package]]
 name = "esp-idf-svc"
 version = "0.45.0"
-source = "git+https://github.com/taunusflieger/esp-idf-svc?branch=idf5_fixes#447a84343ea17dead729741eef27925d9d49e41b"
 dependencies = [
  "anyhow",
  "embassy-sync",

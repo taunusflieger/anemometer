@@ -19,7 +19,7 @@ pio = ["esp-idf-sys/pio"]
 embedded-hal = { git = "https://github.com/rust-embedded/embedded-hal", tag = "v1.0.0-alpha.9" }
 embedded-svc = { version = "0.24", features = ["nightly", "experimental"] }
 esp-idf-sys = { version = "0.32.1", features = ["binstart"] }
-esp-idf-svc = { git = "https://github.com/taunusflieger/esp-idf-svc", branch = "idf5_fixes", features = [
+esp-idf-svc = { path = "../../esp-idf-svc", features = [
     "nightly",
     "experimental",
     "embassy-time-driver",

@@ -22,6 +22,7 @@ use esp_idf_sys::esp_ota_mark_app_valid_cancel_rollback;
 use esp_idf_sys::{self as sys};
 use log::*;
 
+mod configuration;
 mod error;
 mod errors;
 mod mqtt_msg;
@@ -41,11 +42,31 @@ fn main() -> Result<(), InitError> {
     esp_idf_svc::timer::embassy_time::queue::link();
 
     esp_idf_svc::log::EspLogger::initialize_default();
-    info!("Minimal asynch IDF wifi example");
+    info!("ESP32-Anemometer");
 
     let peripherals = Peripherals::take().unwrap();
     let nvs_default_partition = EspDefaultNvsPartition::take()?;
     let sysloop = EspSystemEventLoop::take()?;
+
+    let aws_iot_settings = match configuration::AwsIoTSettings::new("conf") {
+        Ok(settings) => settings,
+        Err(err) => {
+            error!("Failed to load AWS configuration: {err}");
+            panic!();
+        }
+    };
+
+    let ca_cert = core::str::from_utf8(&aws_iot_settings.ca_cert).unwrap();
+    info!("ca_cert = {ca_cert}");
+    let cert = core::str::from_utf8(&aws_iot_settings.cert).unwrap();
+    info!("cert = {cert}");
+    let priv_key = core::str::from_utf8(&aws_iot_settings.priv_key).unwrap();
+    info!("priv-key = {priv_key}");
+    let host = core::str::from_utf8(&aws_iot_settings.host).unwrap();
+    info!("AWS host: |{host}|");
+    info!("AWS port: {}", aws_iot_settings.port);
+    let device_id = core::str::from_utf8(&aws_iot_settings.device_id).unwrap();
+    info!("AWS device-id: |{device_id}|");
 
     let (wifi, wifi_notif) = wifi(
         peripherals.modem,
@@ -64,19 +85,18 @@ fn main() -> Result<(), InitError> {
         let executor = EspExecutor::new();
         let mut tasks = heapless::Vec::new();
 
-        info!("enter mid_prio_execution");
         executor.spawn_local_collect(process_wifi_state_change(wifi, wifi_notif), &mut tasks)?;
 
         executor.spawn_local_collect(wind_speed_demo_publisher_task(), &mut tasks)?;
 
         executor.spawn_local_collect(ota_task(), &mut tasks)?;
-        executor.spawn_local_collect(http_server_task(), &mut tasks)?;
+        // executor.spawn_local_collect(http_server_task(), &mut tasks)?;
 
         executor.spawn_local_collect(
             process_netif_state_change(netif_notifier(sysloop.clone()).unwrap()),
             &mut tasks,
         )?;
-        info!("leave mid_prio_execution");
+
         Ok((executor, tasks))
     });
 
@@ -93,10 +113,8 @@ fn main() -> Result<(), InitError> {
     let mqtt_execution = schedule::<8, _>(8000, move || {
         let executor = EspExecutor::new();
         let mut tasks = heapless::Vec::new();
-        info!("enter mqtt_execution");
 
         executor.spawn_local_collect(mqtt::receive_task(mqtt_conn), &mut tasks)?;
-        info!("leave mqtt_execution");
         Ok((executor, tasks))
     });
 
@@ -110,26 +128,20 @@ fn main() -> Result<(), InitError> {
     let low_prio_execution = schedule::<8, _>(8000, move || {
         let executor = EspExecutor::new();
         let mut tasks = heapless::Vec::new();
-        info!("enter low_prio_execution");
 
         executor.spawn_local_collect(
             mqtt::send_task::<MQTT_MAX_TOPIC_LEN>(mqtt_topic_prefix, mqtt_client),
             &mut tasks,
         )?;
-        info!("leave low_prio_execution");
         Ok((executor, tasks))
     });
 
     // This is required to allow the low prio thread to start
     std::thread::sleep(core::time::Duration::from_millis(2000));
-    info!("before mid_prio_execution");
-    mid_prio_execution.join().unwrap();
-    info!("before mqtt_execution");
-    mqtt_execution.join().unwrap();
-    info!("before low_prio_execution");
-    low_prio_execution.join().unwrap();
 
-    info!("all tasks running");
+    mid_prio_execution.join().unwrap();
+    mqtt_execution.join().unwrap();
+    low_prio_execution.join().unwrap();
 
     unreachable!();
 }
@@ -168,18 +180,13 @@ pub async fn process_wifi_state_change(
         let event = state_changed_source.recv().await.unwrap();
 
         match event {
-            WifiEvent::StaConnected => {
-                info!("WifiEvent: STAConnected");
-            }
+            WifiEvent::StaConnected => {}
             WifiEvent::StaDisconnected => {
-                info!("WifiEvent: STADisconnected");
                 let mut publisher = NETWORK_EVENT_CHANNEL.publisher().unwrap();
                 let _ = publisher.send(NetworkStateChange::WifiDisconnected).await;
                 let _ = wifi.connect();
             }
-            _ => {
-                info!("WifiEvent: other .....");
-            }
+            _ => {}
         }
     }
 }
@@ -203,9 +210,7 @@ pub async fn process_netif_state_change(mut state_changed_source: impl Receiver<
                     })
                     .await;
             }
-            _ => {
-                info!("IpEvent: other .....");
-            }
+            _ => {}
         }
     }
 }
@@ -221,10 +226,7 @@ async fn wind_speed_demo_publisher_task() {
         .await
         {
             Either::First(_) => (Some(true), None),
-            Either::Second(app_state_change) => {
-                info!("send_task recv app_state_change");
-                (None, Some(app_state_change))
-            }
+            Either::Second(app_state_change) => (None, Some(app_state_change)),
         };
         if let Some(ApplicationStateChange::OTAUpdateStarted) = app_state_change {
             info!("wind_speed_demo_publisher_task OTA Update started shutting down wind_speed_demo_publisher task");
