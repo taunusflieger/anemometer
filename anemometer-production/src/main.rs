@@ -1,8 +1,8 @@
 use crate::errors::*;
 use crate::services::*;
 use crate::state::*;
-use crate::task::{httpd::*, mqtt, ota::*};
-
+use crate::task::{mqtt, ota::*};
+use crate::utils::datetime;
 use channel_bridge::{asynch::pubsub, asynch::*};
 use edge_executor::*;
 use edge_executor::{Local, Task};
@@ -16,9 +16,11 @@ use esp_idf_hal::task::thread::ThreadSpawnConfiguration;
 use esp_idf_svc::eventloop::EspSystemEventLoop;
 use esp_idf_svc::netif::IpEvent;
 use esp_idf_svc::nvs::EspDefaultNvsPartition;
+
 use esp_idf_svc::wifi::WifiEvent;
 use esp_idf_sys as _; // If using the `binstart` feature of `esp-idf-sys`, always keep this module imported
 use esp_idf_sys::esp_ota_mark_app_valid_cancel_rollback;
+
 use esp_idf_sys::{self as sys};
 use log::*;
 
@@ -29,6 +31,7 @@ mod mqtt_msg;
 mod services;
 mod state;
 mod task;
+mod utils;
 
 sys::esp_app_desc!();
 
@@ -36,7 +39,7 @@ const TASK_MID_PRIORITY: u8 = 40;
 const TASK_LOW_PRIORITY: u8 = 30;
 const MQTT_MAX_TOPIC_LEN: usize = 64;
 
-fn main() -> Result<(), InitError> {
+fn main() -> core::result::Result<(), InitError> {
     esp_idf_hal::task::critical_section::link();
     esp_idf_svc::timer::embassy_time::driver::link();
     esp_idf_svc::timer::embassy_time::queue::link();
@@ -74,6 +77,8 @@ fn main() -> Result<(), InitError> {
         Some(nvs_default_partition),
     )?;
 
+    let sntp = utils::datetime::initialize();
+
     ThreadSpawnConfiguration {
         name: Some(b"mid-prio-executor\0"),
         priority: TASK_MID_PRIORITY,
@@ -91,6 +96,7 @@ fn main() -> Result<(), InitError> {
 
         executor.spawn_local_collect(ota_task(), &mut tasks)?;
         // executor.spawn_local_collect(http_server_task(), &mut tasks)?;
+        //executor.spawn_local_collect(sntp::sntp_task(), &mut tasks)?;
 
         executor.spawn_local_collect(
             process_netif_state_change(netif_notifier(sysloop.clone()).unwrap()),
@@ -133,11 +139,21 @@ fn main() -> Result<(), InitError> {
             mqtt::send_task::<MQTT_MAX_TOPIC_LEN>(mqtt_topic_prefix, mqtt_client),
             &mut tasks,
         )?;
+
         Ok((executor, tasks))
     });
 
     // This is required to allow the low prio thread to start
     std::thread::sleep(core::time::Duration::from_millis(2000));
+
+    if let Ok(datetime) = datetime::get_datetime() {
+        let format =
+            time::format_description::parse("[day].[month].[year] [hour]:[minute]:[second]")
+                .expect("Invalid format.");
+
+        let time = datetime.format(&format).expect("Could not format time.");
+        info!("System start time: {time}");
+    }
 
     mid_prio_execution.join().unwrap();
     mqtt_execution.join().unwrap();
@@ -148,8 +164,10 @@ fn main() -> Result<(), InitError> {
 
 pub fn schedule<'a, const C: usize, M>(
     stack_size: usize,
-    spawner: impl FnOnce() -> Result<(Executor<'a, C, M, Local>, heapless::Vec<Task<()>, C>), SpawnError>
-        + Send
+    spawner: impl FnOnce() -> core::result::Result<
+            (Executor<'a, C, M, Local>, heapless::Vec<Task<()>, C>),
+            SpawnError,
+        > + Send
         + 'static,
 ) -> std::thread::JoinHandle<()>
 where
@@ -168,7 +186,7 @@ where
 #[inline(always)]
 pub fn netif_notifier(
     mut sysloop: EspSystemEventLoop,
-) -> Result<impl Receiver<Data = IpEvent>, InitError> {
+) -> core::result::Result<impl Receiver<Data = IpEvent>, InitError> {
     Ok(pubsub::SvcReceiver::new(sysloop.as_async().subscribe()?))
 }
 

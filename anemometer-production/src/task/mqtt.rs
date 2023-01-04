@@ -4,6 +4,7 @@ use crate::mqtt_msg::{
     MQTT_TOPIC_POSTFIX_WIND_SPEED,
 };
 use crate::state::*;
+use crate::utils::datetime;
 use core::str::{self, FromStr};
 use embassy_futures::select::{select, select3, Either, Either3};
 use embassy_sync::blocking_mutex::raw::CriticalSectionRawMutex;
@@ -136,16 +137,23 @@ pub async fn send_task<const L: usize>(topic_prefix: &str, mut mqtt: impl Client
             info!("send_task send new wind data {}", wind_data.speed);
 
             if connected {
-                if let Ok(_msg_id) = error::check!(
-                    mqtt.publish(
-                        &topic_wind_speed,
-                        QoS::AtLeastOnce,
-                        false,
-                        format!("{}", wind_data.speed).as_str().as_bytes()
-                    )
-                    .await
-                ) {
-                    info!("send_task published to {}", topic_wind_speed);
+                if let Ok(datetime) = datetime::get_datetime() {
+                    // check if we have a valid system time
+                    if datetime.year() > 1970 {
+                        if let Ok(_msg_id) = error::check!(
+                            mqtt.publish(
+                                &topic_wind_speed,
+                                QoS::AtLeastOnce,
+                                false,
+                                format!("{}", wind_data.speed).as_str().as_bytes()
+                            )
+                            .await
+                        ) {
+                            info!("send_task published to {}", topic_wind_speed);
+                        }
+                    } else {
+                        info!("no vaild system time");
+                    }
                 }
             } else {
                 info!(

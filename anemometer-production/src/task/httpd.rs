@@ -3,6 +3,7 @@ use crate::state::*;
 use embassy_futures::select::{select, Either};
 use log::*;
 
+#[allow(dead_code)]
 pub async fn http_server_task() {
     // use channel_bridge::asynch::*;
     use embedded_svc::io::blocking::Write;

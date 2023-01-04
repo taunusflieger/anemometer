@@ -50,6 +50,7 @@ once_cell = { version = "1.16.0" }
 anyhow = "1.0"
 serde = { version = "1", default-features = false }
 postcard = "1.0.2"
+time = { version = "0.3", features = ["macros", "formatting", "parsing"] }
 
 [package.metadata.espflash]
 partition_table = "partitions.csv"

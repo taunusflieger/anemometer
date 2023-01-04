@@ -75,6 +75,7 @@ pub fn mqtt() -> Result<
     Ok((client_id, mqtt_client, mqtt_conn))
 }
 
+#[allow(dead_code)]
 pub mod http {
     use std::cell::{RefCell, RefMut};
     use std::rc::Rc;
