@@ -8,6 +8,8 @@ This experiment uses IDF OTA functionality in Rust on an Adafruit ESP32-S3 TFT B
 
 This is WIP - should lead to a sensor node for an anemometer. The anemometer needs to be calibrated. This will be done by moving (driving) the anemometer an comparing the rotation speed with parallel recorded GPS signal.
 
+This document requires some love to capture the most resent changes i.e. split into calibration and production. Production has been largely re-written using Embassy asynchronous application model.
+
 ## Scope
 ### Technical
 - relayable wifi connection, automatic reconnect
@@ -31,6 +33,8 @@ This is WIP - should lead to a sensor node for an anemometer. The anemometer nee
 - Reliable wifi re-connect. When the wifi connection gets dropped, a re-connection process is started. When an IP address is received the HTTP Server is started again.
 - HTTP Server
 - OTA
+- MQTT (sending data from the device, control the device OTA / reset)
+- NVS for configuration storage
 - Support for Adafruit Feather ESP32-S3 TFT display controller ST7789 (similar to ST7735). Implmentation approach uses [mipidsi driver](https://github.com/almindor/mipidsi) 
 - Output of GPS speed on TFT
 - Logging of GPS NMEA sentences and anemometer rotation speed (rps) to SD card
@@ -68,8 +72,9 @@ The new version will see there is no later version online to flash.
 - [x] Support for Aadfruit [Adalogger FeatherWing](https://learn.adafruit.com/adafruit-adalogger-featherwing) to log wind speed and GPS data. Interface through [Embedded SD/MMC](https://github.com/rust-embedded-community/embedded-sdmmc-rs). This is only required for the calibration use-case.
 - [ ] Evaluate pros and cons for using ESP32-S3 vs ESP32-C3 (power consumption, sleep, local web server, OTA needs to be considered)
 - [x] ISR & event counting for windspeed sensor
-- [ ] UI for OTA update
-- [x] Fully implement the feature approach to seperate the calibration use case from production use case. The image for calibration is too large to allow OTA. Display, GPS and SD Card are not required for production
+- [x] Fully implement the feature approach to seperate the calibration use case from production use case. The image for calibration is too large to allow OTA. Display, GPS and SD Card are not required for production. The solution has been split into a calibration and production solution.
+- [x] Implement configuration settings for production in a seperate NVS partition
+- [x] Add support for SNTP for production use case
 - [ ] Implement MQTT for data ingress to AWS
 - [ ] Implement sleep mode (which one ?)
 - [ ] Implement new UI for the AWS lamda based weather station App
