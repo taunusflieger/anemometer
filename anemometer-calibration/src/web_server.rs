@@ -1,5 +1,5 @@
 pub mod url_handler {
-    use crate::anemometer::anemometer::GLOBAL_ANEMOMETER_DATA;
+    use crate::anemometer::GLOBAL_ANEMOMETER_DATA;
     use embedded_svc::{http::server::Request, io::Write, utils::http::Headers};
     use esp_idf_svc::http::server::EspHttpConnection;
     use log::info;

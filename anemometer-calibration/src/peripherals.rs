@@ -33,7 +33,7 @@ impl SystemPeripherals<Gpio21, Gpio33, CHANNEL0> {
             // For the Adafruit Feather ESP32-S3 TFT VDD is connected to GPIO 34
             neopixel: NeoPixelPeripherals {
                 dc: peripherals.pins.gpio34.into(),
-                pin: peripherals.pins.gpio33.into(),
+                pin: peripherals.pins.gpio33,
                 channel: peripherals.rmt.channel0,
             },
 

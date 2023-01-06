@@ -1,5 +1,4 @@
-use crate::anemometer::anemometer::AnemometerDriver;
-use crate::anemometer::anemometer::GLOBAL_ANEMOMETER_DATA;
+use crate::anemometer::{AnemometerDriver, GLOBAL_ANEMOMETER_DATA};
 use crate::gps_mtk3339::gps;
 use crate::gps_mtk3339::gps::Mtk3339;
 use crate::screen::anemometer_screen::LayoutManager;
@@ -22,7 +21,6 @@ use esp_idf_svc::{
 use esp_idf_sys as _;
 use esp_idf_sys::{self as sys, esp, esp_wifi_set_ps, wifi_ps_type_t_WIFI_PS_NONE};
 use log::info;
-use nmea;
 use smart_leds::{colors::*, RGB8};
 use std::format;
 use std::net::Ipv4Addr;
@@ -88,8 +86,7 @@ fn main() -> anyhow::Result<()> {
     let spi_bus_driver = peripherals.spi_bus.driver;
     let sdmmc_peripherals = peripherals.sdcard;
 
-    let mut sd_card =
-        sdmmc::sd_storage::SdCard::new(sdmmc_peripherals, Rc::clone(&spi_bus_driver))?;
+    let mut sd_card = sdmmc::SdCard::new(sdmmc_peripherals, Rc::clone(&spi_bus_driver))?;
 
     let mut display = display::display(display_peripherals, Rc::clone(&spi_bus_driver)).unwrap();
 
@@ -175,7 +172,7 @@ fn main() -> anyhow::Result<()> {
 
                 info!("NMEA len:{} raw: {:?}", sentence.len(), sentence);
 
-                if sentence.len() > 0 {
+                if !sentence.is_empty() {
                     info!("================= NMEA parse");
                     let res = nmea.parse(sentence.as_str());
 
@@ -196,7 +193,7 @@ fn main() -> anyhow::Result<()> {
                             );
                             let speed = if nmea.speed_over_ground.is_some() {
                                 // kn/h -> km/h
-                                (nmea.speed_over_ground.unwrap() as f32) * 1.852_f32
+                                nmea.speed_over_ground.unwrap() * 1.852_f32
                             } else {
                                 0.
                             };
@@ -278,12 +275,12 @@ fn main() -> anyhow::Result<()> {
                 match cmd.widget {
                     WidgetName::GpsSpeed => {
                         layout_mgr
-                            .draw_gps_speed(&mut display, &cmd.text.as_str())
+                            .draw_gps_speed(&mut display, cmd.text.as_str())
                             .unwrap();
                     }
                     WidgetName::WindSpeed => {
                         layout_mgr
-                            .draw_wind_speed(&mut display, &cmd.text.as_str())
+                            .draw_wind_speed(&mut display, cmd.text.as_str())
                             .unwrap();
                     }
                 };
@@ -315,7 +312,7 @@ fn main() -> anyhow::Result<()> {
                 tx3.send(SysLoopMsg::NeopixelMsg { color: DARK_GREEN })?;
 
                 layout_mgr
-                    .draw_ip_address(&mut display, format!("IP: {}", ip.to_string()).as_str())
+                    .draw_ip_address(&mut display, format!("IP: {ip}").as_str())
                     .unwrap();
 
                 let server_config = Configuration::default();

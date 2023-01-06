@@ -149,29 +149,26 @@ pub mod gps {
             let mut ch = [0_u8; 1];
             let mut buf = [0_u8; SENTENCE_LENGTH];
             let mut buf_idx: usize;
+
+            buf_idx = 0;
+
             loop {
-                buf_idx = 0;
-
-                loop {
+                self.uart.read(&mut ch, BLOCK)?;
+                while ch[0] == 0x0D || ch[0] == 0x0A {
                     self.uart.read(&mut ch, BLOCK)?;
-                    while ch[0] == 0x0D || ch[0] == 0x0A {
-                        self.uart.read(&mut ch, BLOCK)?;
-                    }
-                    if ch[0] == b'$' {
-                        break;
-                    }
                 }
+                if ch[0] == b'$' {
+                    break;
+                }
+            }
 
+            buf[buf_idx] = ch[0];
+            buf_idx += 1;
+            self.uart.read(&mut ch, BLOCK)?;
+            while ch[0] != 0x0D && ch[0] != 0x0A && buf_idx < SENTENCE_LENGTH {
                 buf[buf_idx] = ch[0];
                 buf_idx += 1;
                 self.uart.read(&mut ch, BLOCK)?;
-                while ch[0] != 0x0D && ch[0] != 0x0A && buf_idx < SENTENCE_LENGTH {
-                    buf[buf_idx] = ch[0];
-                    buf_idx += 1;
-                    self.uart.read(&mut ch, BLOCK)?;
-                }
-
-                break;
             }
 
             let s = match std::str::from_utf8(&buf[0..buf_idx]) {
@@ -201,7 +198,7 @@ pub mod gps {
         // As a hack, this function removes the data between field 6 und 7
         // and creates a valid RMC sentence
         pub fn fix_rmc_sentence(s: String) -> String {
-            let v: Vec<_> = s.match_indices(",").map(|(i, _)| i).collect();
+            let v: Vec<_> = s.match_indices(',').map(|(i, _)| i).collect();
             if s.contains("RMC") && v.len() > 12 {
                 let mut left = String::new();
                 let mut right = String::new();
@@ -235,37 +232,25 @@ pub mod gps {
         pub fn process_gps_input(input_buffer: &mut [u8]) -> Option<String> {
             const SENTENCE_BUF_SIZE: usize = 80;
             let mut sentence_buf = [0_u8; SENTENCE_BUF_SIZE];
-            let mut sentence_available = false;
-            let start: usize;
-            let mut end: usize = 0;
 
-            let res = input_buffer.iter().position(|&x| x == b'$');
-
-            if res.is_some() {
-                start = res.unwrap();
-
+            if let Some(start) = input_buffer.iter().position(|&x| x == b'$') {
                 // find end of the sentence
-                let res = input_buffer[start..]
+                if let Some(end) = input_buffer[start..]
                     .iter()
-                    .position(|&x| x == 0x0d || x == 0x0a);
-                if res.is_some() {
-                    end = res.unwrap();
+                    .position(|&x| x == 0x0d || x == 0x0a)
+                {
                     if end > 0 && end < SENTENCE_BUF_SIZE - 1 {
                         sentence_buf[0..end].copy_from_slice(&input_buffer[start..end + start]);
-                        sentence_available = true;
+
+                        return Some(
+                            core::str::from_utf8(&sentence_buf[0..end])
+                                .unwrap()
+                                .to_owned(),
+                        );
                     }
                 }
             }
-
-            if sentence_available {
-                Some(
-                    core::str::from_utf8(&sentence_buf[0..end])
-                        .unwrap()
-                        .to_owned(),
-                )
-            } else {
-                None
-            }
+            None
         }
     }
 }
