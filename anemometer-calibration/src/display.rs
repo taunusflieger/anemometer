@@ -2,25 +2,16 @@ use crate::errors::*;
 use crate::peripherals::DisplaySpiPeripherals;
 use core::fmt::Debug;
 use core::mem;
-use esp_idf_hal::prelude::*;
-
-#[cfg(feature = "calibration")]
 use display_interface_spi::SPIInterfaceNoCS;
-
-#[cfg(feature = "calibration")]
 use embedded_graphics::pixelcolor::Rgb565;
-
 use esp_idf_hal::delay;
-
 use esp_idf_hal::gpio::*;
 use esp_idf_hal::peripheral::Peripheral;
+use esp_idf_hal::prelude::*;
 use esp_idf_hal::spi::*;
 use gfx_xtra::draw_target::{Flushable, OwnedDrawTargetExt};
-
-#[cfg(feature = "calibration")]
 use mipidsi::{Builder, Orientation};
 
-#[cfg(feature = "calibration")]
 pub fn display(
     display_peripherals: DisplaySpiPeripherals<
         impl Peripheral<P = impl OutputPin + 'static> + 'static,
