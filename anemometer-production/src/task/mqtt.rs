@@ -135,10 +135,13 @@ pub async fn send_task<const L: usize>(topic_prefix: &str, mut mqtt: impl Client
             break;
         }
         if let Some(ApplicationDataChange::ReportWindData) = app_data {
-            let wind_historian = (*WIND_DATA_HISTORY).lock().unwrap();
+            let mut avg_speed = 0.0;
+            let mut wind_gust = 0.0;
 
-            let avg_speed = wind_historian.avg_speed();
-            let wind_gust = wind_historian.gust_speed();
+            if let Ok(wind_historian) = (*WIND_DATA_HISTORY).lock() {
+                avg_speed = wind_historian.avg_speed();
+                wind_gust = wind_historian.gust_speed();
+            };
 
             info!("send_task send wind speed = {avg_speed}, wind gust = {wind_gust}");
 
@@ -151,7 +154,7 @@ pub async fn send_task<const L: usize>(topic_prefix: &str, mut mqtt: impl Client
                                 &topic_wind_speed,
                                 QoS::AtLeastOnce,
                                 false,
-                                format!("{}", avg_speed).as_str().as_bytes()
+                                format!("{avg_speed}").as_str().as_bytes()
                             )
                             .await
                         ) {

@@ -45,7 +45,7 @@ pub struct WindDataHistory {
 
 impl WindDataHistory {
     #[allow(dead_code)]
-    pub fn new(&self) -> Self {
+    pub fn new() -> Self {
         WindDataHistory {
             wind_gust_buffer: HistoryBuffer::new(),
             wind_speed_buffer: HistoryBuffer::new(),
@@ -122,7 +122,6 @@ impl WindStatistics for WindDataHistory {
 
 #[cfg(test)]
 mod tests {
-    // Note this useful idiom: importing names from outer (for mod tests) scope.
     use super::*;
 
     #[test]
@@ -132,7 +131,6 @@ mod tests {
         for _ in 0..240 {
             wind_data.store_measurement(1, 0);
         }
-
         assert_eq!(wind_data.avg_speed(), 1.0);
     }
 
@@ -143,7 +141,6 @@ mod tests {
         for _ in 0..240 {
             wind_data.store_measurement(1, 0);
         }
-
         let gust = wind_data.gust_speed();
         assert_eq!(gust, 1.0);
     }

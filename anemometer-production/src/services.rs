@@ -143,7 +143,7 @@ pub mod anemometer {
         _pin: PinDriver<'static, P, Input>,
     }
 
-    impl<'d, P: InputPin + OutputPin> AnemometerDriver<P> {
+    impl<P: InputPin + OutputPin> AnemometerDriver<P> {
         pub fn new(
             pin: impl Peripheral<P = P> + 'static,
         ) -> Result<AnemometerDriver<P>, InitError> {
@@ -163,6 +163,7 @@ pub mod anemometer {
 
                 // We receive 2 pulses per rotatio, therefor the counter needs
                 // to be devided by 2. MEASUREMENT_INTERVAL needs to be in [ms]
+                #[allow(unused_variables)]
                 let rps = (FixedU16::<U4>::from_num(cnt >> 2)
                     / (FixedU16::<U4>::from_num(global_settings::MEASUREMENT_INTERVAL as u16)
                         / FixedU16::<U4>::from_num(1000)))
