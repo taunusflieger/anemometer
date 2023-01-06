@@ -75,6 +75,7 @@ The new version will see there is no later version online to flash.
 - [x] Fully implement the feature approach to seperate the calibration use case from production use case. The image for calibration is too large to allow OTA. Display, GPS and SD Card are not required for production. The solution has been split into a calibration and production solution.
 - [x] Implement configuration settings for production in a seperate NVS partition
 - [x] Add support for SNTP for production use case
+- [ ] Modify existing AWS IoT interface to deal with wind only data (not the full weather dataset which is currently processed)
 - [ ] Implement MQTT for data ingress to AWS
 - [ ] Implement sleep mode (which one ?)
 - [ ] Implement new UI for the AWS lamda based weather station App
