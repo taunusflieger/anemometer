@@ -1,3 +1,4 @@
+use crate::data_processing::*;
 use crate::error;
 use crate::mqtt_msg::{
     MqttCommand, MQTT_TOPIC_POSTFIX_COMMAND, MQTT_TOPIC_POSTFIX_WIND_DIRECTION,
@@ -21,11 +22,11 @@ pub async fn receive_task(mut connection: impl Connection<Message = Option<MqttC
         let (message, app_state_change) =
             match select(connection.next(), app_event.next_message_pure()).await {
                 Either::First(message) => {
-                    info!("send_task recv MQTT_CONNECT_SIGNAL");
+                    info!("receive_task recv MQTT_CONNECT_SIGNAL");
                     (message, None)
                 }
                 Either::Second(app_state_change) => {
-                    info!("send_task recv app_state_change");
+                    info!("receive_task recv app_state_change");
                     (None, Some(app_state_change))
                 }
             };
@@ -133,8 +134,13 @@ pub async fn send_task<const L: usize>(topic_prefix: &str, mut mqtt: impl Client
             drop(mqtt);
             break;
         }
-        if let Some(ApplicationDataChange::NewWindData(wind_data)) = app_data {
-            info!("send_task send new wind data {}", wind_data.speed);
+        if let Some(ApplicationDataChange::ReportWindData) = app_data {
+            let wind_historian = (*WIND_DATA_HISTORY).lock().unwrap();
+
+            let avg_speed = wind_historian.avg_speed();
+            let wind_gust = wind_historian.gust_speed();
+
+            info!("send_task send wind speed = {avg_speed}, wind gust = {wind_gust}");
 
             if connected {
                 if let Ok(datetime) = datetime::get_datetime() {
@@ -145,7 +151,7 @@ pub async fn send_task<const L: usize>(topic_prefix: &str, mut mqtt: impl Client
                                 &topic_wind_speed,
                                 QoS::AtLeastOnce,
                                 false,
-                                format!("{}", wind_data.speed).as_str().as_bytes()
+                                format!("{}", avg_speed).as_str().as_bytes()
                             )
                             .await
                         ) {

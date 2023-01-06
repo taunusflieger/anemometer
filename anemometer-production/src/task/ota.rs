@@ -46,7 +46,7 @@ pub async fn ota_task() {
 // TODO: as of Dec 2022 there is no async http client implementation for ESP IDF.
 // once an async implementation becomes available rework this code to become async
 fn perform_update(firmware_url: &str) -> Result<(), OtaError> {
-    let content_length;
+    let content_length: usize;
     let mut ota_write_data: [u8; WRITE_DATA_BUF_SIZE] = [0; WRITE_DATA_BUF_SIZE];
     let mut invalid_fw_version: heapless::String<32> = String::new();
     let mut found_invalid_fw = false;

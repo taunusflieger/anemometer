@@ -10,24 +10,25 @@ use embassy_futures::select::{select, Either};
 use embassy_time::{Duration, Timer};
 use embedded_svc::utils::asyncify::Asyncify;
 use embedded_svc::wifi::Wifi as WifiTrait;
-use esp_idf_hal::peripherals::Peripherals;
 use esp_idf_hal::task::executor::EspExecutor;
 use esp_idf_hal::task::thread::ThreadSpawnConfiguration;
 use esp_idf_svc::eventloop::EspSystemEventLoop;
 use esp_idf_svc::netif::IpEvent;
 use esp_idf_svc::nvs::EspDefaultNvsPartition;
-
 use esp_idf_svc::wifi::WifiEvent;
-use esp_idf_sys as _; // If using the `binstart` feature of `esp-idf-sys`, always keep this module imported
+// If using the `binstart` feature of `esp-idf-sys`, always keep this module imported
+use esp_idf_sys as _;
 use esp_idf_sys::esp_ota_mark_app_valid_cancel_rollback;
-
 use esp_idf_sys::{self as sys};
 use log::*;
 
 mod configuration;
+mod data_processing;
 mod error;
 mod errors;
+mod global_settings;
 mod mqtt_msg;
+mod peripherals;
 mod services;
 mod state;
 mod task;
@@ -47,9 +48,14 @@ fn main() -> core::result::Result<(), InitError> {
     esp_idf_svc::log::EspLogger::initialize_default();
     info!("ESP32-Anemometer");
 
-    let peripherals = Peripherals::take().unwrap();
+    let peripherals = peripherals::SystemPeripherals::take();
+    let anemometer_peripherals = peripherals.pulse_counter;
     let nvs_default_partition = EspDefaultNvsPartition::take()?;
     let sysloop = EspSystemEventLoop::take()?;
+
+    // Initialize data capture from anemometer
+    let mut anemometer = anemometer::AnemometerDriver::new(anemometer_peripherals.pulse).unwrap();
+    let _anemometer_timer = anemometer.set_measurement_timer().unwrap();
 
     let aws_iot_settings = match configuration::AwsIoTSettings::new("conf") {
         Ok(settings) => settings,
@@ -233,7 +239,9 @@ async fn wind_speed_demo_publisher_task() {
     let mut app_event = APPLICATION_EVENT_CHANNEL.subscriber().unwrap();
     loop {
         let (timer_fired, app_state_change) = match select(
-            Timer::after(Duration::from_secs(10)),
+            Timer::after(Duration::from_secs(
+                global_settings::DATA_REPORTING_INTERVAL,
+            )),
             app_event.next_message_pure(),
         )
         .await
@@ -248,11 +256,9 @@ async fn wind_speed_demo_publisher_task() {
 
         if let Some(send_needed) = timer_fired {
             if send_needed {
-                let data = ApplicationDataChange::NewWindData(WindData {
-                    speed: 23,
-                    angle: 180,
-                });
-                publisher.publish(data).await;
+                publisher
+                    .publish(ApplicationDataChange::ReportWindData)
+                    .await;
             }
         }
     }

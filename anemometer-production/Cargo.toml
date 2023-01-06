@@ -51,6 +51,8 @@ anyhow = "1.0"
 serde = { version = "1", default-features = false }
 postcard = "1.0.2"
 time = { version = "0.3", features = ["macros", "formatting", "parsing"] }
+lazy_static = { version = "1.4.0" }
+fixed = { version = "1.21.0" }
 
 [package.metadata.espflash]
 partition_table = "partitions.csv"

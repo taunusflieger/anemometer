@@ -1,5 +1,14 @@
+use crate::data_processing::*;
 use embassy_sync::blocking_mutex::raw::CriticalSectionRawMutex;
 use embassy_sync::pubsub::PubSubChannel;
+use lazy_static::lazy_static;
+use std::sync::{Arc, Mutex};
+
+lazy_static! {
+    pub static ref WIND_DATA_HISTORY: Arc<Mutex<WindDataHistory>> =
+        Arc::new(Mutex::new(WindDataHistory::default()));
+}
+
 use serde::{Deserialize, Serialize};
 
 pub type OtaUrl = heapless::String<128>;
@@ -52,5 +61,5 @@ pub enum ApplicationStateChange {
 #[derive(Clone, Debug)]
 #[allow(dead_code)]
 pub enum ApplicationDataChange {
-    NewWindData(WindData),
+    ReportWindData,
 }

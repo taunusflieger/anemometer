@@ -98,10 +98,12 @@ impl MessageParser {
     }
 
     fn parse_ota_update_command(data: &[u8]) -> Option<MqttCommand> {
+        info!("parse_ota_update_command: {:?}", data);
         Self::parse::<OtaUrl>(data).map(MqttCommand::ExecOTAUpdate)
     }
 
     fn parse_system_restart_command(data: &[u8]) -> Option<MqttCommand> {
+        info!("parse_system_restart_command: {:?}", data);
         Self::parse_empty(data).map(|_| MqttCommand::SystemRestart)
     }
 
