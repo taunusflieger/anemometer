@@ -30,13 +30,13 @@
  * limitations under the License.
  */
 use crate::data_processing::*;
-use crate::error;
 use crate::mqtt_msg::{
     MqttCommand, MQTT_TOPIC_POSTFIX_COMMAND, MQTT_TOPIC_POSTFIX_WIND_DIRECTION,
     MQTT_TOPIC_POSTFIX_WIND_SPEED,
 };
 use crate::state::*;
 use crate::utils::datetime;
+use crate::utils::error;
 use core::str::{self, FromStr};
 use embassy_futures::select::{select, select3, Either, Either3};
 use embassy_sync::blocking_mutex::raw::CriticalSectionRawMutex;
@@ -53,7 +53,7 @@ pub async fn receive_task(mut connection: impl Connection<Message = Option<MqttC
         let (message, app_state_change) =
             match select(connection.next(), app_event.next_message_pure()).await {
                 Either::First(message) => {
-                    info!("receive_task recv MQTT_CONNECT_SIGNAL");
+                    //info!("receive_task recv MQTT_CONNECT_SIGNAL");
                     (message, None)
                 }
                 Either::Second(app_state_change) => {
@@ -63,7 +63,7 @@ pub async fn receive_task(mut connection: impl Connection<Message = Option<MqttC
             };
 
         if let Some(message) = message {
-            info!("receive_task [MQTT/CONNECTION]: {:?}", message);
+            //info!("receive_task [MQTT/CONNECTION]: {:?}", message);
 
             if let Ok(Event::Received(Some(cmd))) = &message {
                 match cmd {

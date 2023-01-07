@@ -29,11 +29,10 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-use crate::errors::*;
 use crate::services::*;
 use crate::state::*;
 use crate::task::{mqtt, ota::*};
-use crate::utils::datetime;
+use crate::utils::{datetime, errors::*};
 use channel_bridge::{asynch::pubsub, asynch::*};
 use edge_executor::*;
 use edge_executor::{Local, Task};
@@ -55,8 +54,6 @@ use log::*;
 
 mod configuration;
 mod data_processing;
-mod error;
-mod errors;
 mod global_settings;
 mod mqtt_msg;
 mod peripherals;
@@ -151,7 +148,8 @@ fn main() -> core::result::Result<(), InitError> {
     .set()?;
 
     std::thread::sleep(core::time::Duration::from_millis(8000));
-    let (mqtt_topic_prefix, mqtt_client, mqtt_conn) = services::mqtt()?;
+    let (mqtt_topic_prefix, mqtt_client, mqtt_conn) =
+        services::mqtt(global_settings::MQTT_SERVER_URL)?;
 
     let mqtt_execution = schedule::<8, _>(8000, move || {
         let executor = EspExecutor::new();

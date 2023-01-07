@@ -42,8 +42,8 @@ use esp_idf_svc::wifi::{EspWifi, WifiEvent};
 use esp_idf_sys::EspError;
 use log::*;
 
-use crate::errors::*;
-use crate::mqtt_msg::*;
+use crate::utils::errors::*;
+use crate::{global_settings, mqtt_msg::*};
 
 const SSID: &str = env!("RUST_ESP32_ANEMOMETER_WIFI_SSID");
 const PASS: &str = env!("RUST_ESP32_ANEMOMETER_WIFI_PASS");
@@ -81,7 +81,9 @@ pub fn wifi<'d>(
     ))
 }
 
-pub fn mqtt() -> Result<
+pub fn mqtt(
+    url: &str,
+) -> Result<
     (
         &'static str,
         impl Client + Publish,
@@ -89,11 +91,11 @@ pub fn mqtt() -> Result<
     ),
     InitError,
 > {
-    let client_id = "anemometer";
+    let client_id = global_settings::MQTT_CLIENT_ID;
     let mut mqtt_parser = MessageParser::new();
 
     let (mqtt_client, mqtt_conn) = EspMqttClient::new_with_converting_async_conn(
-        "mqtt://192.168.100.86:1883",
+        url,
         &MqttClientConfiguration {
             client_id: Some(client_id),
             ..Default::default()
@@ -156,9 +158,9 @@ pub mod anemometer {
 
     // This value is incremented by the ISR
     static ANEMOMETER_PULSCOUNT: AtomicU32 = AtomicU32::new(0);
-    use crate::errors::*;
     use crate::global_settings;
     use crate::state::*;
+    use crate::utils::errors::*;
     use esp_idf_hal::gpio::*;
     use esp_idf_hal::peripheral::Peripheral;
     use esp_idf_svc::timer::*;

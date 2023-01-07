@@ -29,9 +29,8 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-use crate::error;
-use crate::errors::*;
 use crate::state::*;
+use crate::utils::errors::*;
 use core::mem;
 use core::ptr;
 use embassy_time::{Duration, Timer};
