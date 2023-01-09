@@ -33,7 +33,3 @@
 pub const DATA_REPORTING_INTERVAL: u64 = 120;
 // Interval for taking measurments from the anemometer [ms]
 pub const MEASUREMENT_INTERVAL: u64 = 500;
-
-pub const MQTT_CLIENT_ID: &str = "anemometer";
-
-pub const MQTT_SERVER_URL: &str = "mqtt://192.168.100.86:1883";

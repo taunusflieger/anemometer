@@ -782,6 +782,7 @@ dependencies = [
  "once_cell",
  "postcard",
  "serde",
+ "serde_json",
  "static_cell",
  "time 0.3.17",
 ]

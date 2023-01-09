@@ -29,6 +29,9 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+use crate::configuration::AwsIoTCertificates;
+use crate::mqtt_msg::*;
+use crate::utils::errors::*;
 use channel_bridge::{asynch::pubsub, asynch::*};
 use embedded_svc::mqtt::client::asynch::{Client, Connection, Publish};
 use embedded_svc::utils::asyncify::Asyncify;
@@ -41,9 +44,6 @@ use esp_idf_svc::nvs::EspDefaultNvsPartition;
 use esp_idf_svc::wifi::{EspWifi, WifiEvent};
 use esp_idf_sys::EspError;
 use log::*;
-
-use crate::utils::errors::*;
-use crate::{global_settings, mqtt_msg::*};
 
 const SSID: &str = env!("RUST_ESP32_ANEMOMETER_WIFI_SSID");
 const PASS: &str = env!("RUST_ESP32_ANEMOMETER_WIFI_PASS");
@@ -82,30 +82,58 @@ pub fn wifi<'d>(
 }
 
 pub fn mqtt(
-    url: &str,
+    aws_certificates: &'static AwsIoTCertificates,
 ) -> Result<
     (
-        &'static str,
         impl Client + Publish,
         impl Connection<Message = Option<MqttCommand>>,
     ),
     InitError,
 > {
-    let client_id = global_settings::MQTT_CLIENT_ID;
     let mut mqtt_parser = MessageParser::new();
+
+    let x509_server_cert = esp_idf_svc::tls::X509::pem_until_nul(&aws_certificates.server_cert[..]);
+    let x509_client_cert = esp_idf_svc::tls::X509::pem_until_nul(&aws_certificates.device_cert[..]);
+    let x509_client_priv_key =
+        esp_idf_svc::tls::X509::pem_until_nul(&aws_certificates.private_key[..]);
+
+    // need to remove tailing zeros otherwise CString will complain
+    let url = core::str::from_utf8(
+        &(aws_certificates.host_url[0..aws_certificates
+            .host_url
+            .iter()
+            .position(|&x| x == 0)
+            .unwrap()]),
+    )
+    .unwrap();
+    info!("url = {url}");
+
+    let device_id = core::str::from_utf8(
+        &(aws_certificates.device_id[0..aws_certificates
+            .device_id
+            .iter()
+            .position(|&x| x == 0)
+            .unwrap()]),
+    )
+    .unwrap();
+    info!("client id = {device_id}");
 
     let (mqtt_client, mqtt_conn) = EspMqttClient::new_with_converting_async_conn(
         url,
         &MqttClientConfiguration {
-            client_id: Some(client_id),
+            client_id: Some(device_id),
+            //crt_bundle_attach: Some(esp_idf_sys::esp_crt_bundle_attach),
+            server_certificate: Some(x509_server_cert),
+            client_certificate: Some(x509_client_cert),
+            private_key: Some(x509_client_priv_key),
             ..Default::default()
         },
         move |event| mqtt_parser.convert(event),
     )?;
-
+    info!("after EspMqttClient");
     let mqtt_client = mqtt_client.into_async();
 
-    Ok((client_id, mqtt_client, mqtt_conn))
+    Ok((mqtt_client, mqtt_conn))
 }
 
 #[allow(dead_code)]

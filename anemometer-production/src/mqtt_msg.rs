@@ -4,11 +4,14 @@ use embedded_svc::mqtt::client::asynch::{Event, Message};
 use embedded_svc::mqtt::client::Details;
 use log::*;
 use serde::{Deserialize, Serialize};
-
+use serde_json::json;
+#[allow(dead_code)]
 pub const MQTT_TOPIC_POSTFIX_COMMAND: &str = "/command/#";
 pub const MQTT_TOPIC_POSTFIX_COMMAND_OTA_UPDATE: &str = "/command/ota_update";
 pub const MQTT_TOPIC_POSTFIX_COMMAND_SYSTEM_RESTART: &str = "/command/system_restart";
+#[allow(dead_code)]
 pub const MQTT_TOPIC_POSTFIX_WIND_SPEED: &str = "/wind/speed";
+#[allow(dead_code)]
 pub const MQTT_TOPIC_POSTFIX_WIND_DIRECTION: &str = "/wind/direction";
 
 #[derive(Clone, Eq, PartialEq, Debug, Serialize, Deserialize)]
@@ -122,5 +125,29 @@ impl MessageParser {
         } else {
             None
         }
+    }
+}
+
+#[allow(non_snake_case)]
+#[derive(Serialize)]
+pub struct AWSShadowUpdate<'a> {
+    pub windDirText: &'a str,
+    pub deviceId: &'a str,
+    pub timeStamp: &'a str,
+    pub epochTime: &'a str,
+    pub windDir: &'a str,
+    pub windSpeed: &'a str,
+    pub windGust: &'a str,
+}
+
+impl AWSShadowUpdate<'_> {
+    pub fn to_aws_device_update_msg(self, msg: &mut String) {
+        let json_msg = json!({
+            "state": {
+                "reported": self
+            }
+        });
+
+        *msg = serde_json::to_string(&json_msg).unwrap();
     }
 }

@@ -29,11 +29,16 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+#![allow(incomplete_features)]
+#![feature(generic_const_exprs)]
+
+use crate::configuration::AwsIoTSettings;
 use crate::services::*;
 use crate::state::*;
 use crate::task::{mqtt, ota::*};
 use crate::utils::{datetime, errors::*};
 use channel_bridge::{asynch::pubsub, asynch::*};
+use configuration::AwsIoTCertificates;
 use edge_executor::*;
 use edge_executor::{Local, Task};
 use embassy_futures::select::{select, Either};
@@ -50,6 +55,9 @@ use esp_idf_svc::wifi::WifiEvent;
 use esp_idf_sys as _;
 use esp_idf_sys::esp_ota_mark_app_valid_cancel_rollback;
 use esp_idf_sys::{self as sys};
+use once_cell::sync::Lazy;
+use std::sync::Mutex;
+
 use log::*;
 
 mod configuration;
@@ -68,6 +76,19 @@ const TASK_MID_PRIORITY: u8 = 40;
 const TASK_LOW_PRIORITY: u8 = 30;
 const MQTT_MAX_TOPIC_LEN: usize = 64;
 
+static AWSCERTIFICATES: static_cell::StaticCell<AwsIoTCertificates> =
+    static_cell::StaticCell::new();
+
+pub static AWSCONFIG: Lazy<Mutex<AwsIoTSettings>> = Lazy::new(|| {
+    Mutex::new(match AwsIoTSettings::new("conf") {
+        Ok(settings) => settings,
+        Err(err) => {
+            error!("Failed to load AWS configuration: {err}");
+            panic!();
+        }
+    })
+});
+
 fn main() -> core::result::Result<(), InitError> {
     esp_idf_hal::task::critical_section::link();
     esp_idf_svc::timer::embassy_time::driver::link();
@@ -85,26 +106,29 @@ fn main() -> core::result::Result<(), InitError> {
     let mut anemometer = anemometer::AnemometerDriver::new(anemometer_peripherals.pulse).unwrap();
     let _anemometer_timer = anemometer.set_measurement_timer().unwrap();
 
-    let aws_iot_settings = match configuration::AwsIoTSettings::new("conf") {
-        Ok(settings) => settings,
-        Err(err) => {
-            error!("Failed to load AWS configuration: {err}");
-            panic!();
-        }
-    };
+    let aws_iot_certificates: &'static mut AwsIoTCertificates =
+        AWSCERTIFICATES.init(match AwsIoTCertificates::new("conf") {
+            Ok(settings) => settings,
+            Err(err) => {
+                error!("Failed to load AWS configuration: {err}");
+                panic!();
+            }
+        });
+    /*
+        let ca_cert = core::str::from_utf8(&aws_iot_certificates.server_cert).unwrap();
+        info!("Server = {ca_cert}");
+        let cert = core::str::from_utf8(&aws_iot_certificates.device_cert).unwrap();
+        info!("Device = {cert}");
+        let priv_key = core::str::from_utf8(&aws_iot_certificates.private_key).unwrap();
+        info!("priv-key = {priv_key}");
 
-    let ca_cert = core::str::from_utf8(&aws_iot_settings.ca_cert).unwrap();
-    info!("ca_cert = {ca_cert}");
-    let cert = core::str::from_utf8(&aws_iot_settings.cert).unwrap();
-    info!("cert = {cert}");
-    let priv_key = core::str::from_utf8(&aws_iot_settings.priv_key).unwrap();
-    info!("priv-key = {priv_key}");
-    let host = core::str::from_utf8(&aws_iot_settings.host).unwrap();
-    info!("AWS host: |{host}|");
-    info!("AWS port: {}", aws_iot_settings.port);
-    let device_id = core::str::from_utf8(&aws_iot_settings.device_id).unwrap();
-    info!("AWS device-id: |{device_id}|");
-
+        let aws_iot_settings = AWSCONFIG.lock().unwrap();
+        let host_url = core::str::from_utf8(&aws_iot_settings.host_url).unwrap();
+        info!("AWS host: |{host_url}|");
+        let device_id = core::str::from_utf8(&aws_iot_settings.device_id).unwrap();
+        info!("AWS device-id: |{device_id}|");
+        drop(aws_iot_settings);
+    */
     let (wifi, wifi_notif) = wifi(
         peripherals.modem,
         sysloop.clone(),
@@ -148,8 +172,8 @@ fn main() -> core::result::Result<(), InitError> {
     .set()?;
 
     std::thread::sleep(core::time::Duration::from_millis(8000));
-    let (mqtt_topic_prefix, mqtt_client, mqtt_conn) =
-        services::mqtt(global_settings::MQTT_SERVER_URL)?;
+
+    let (mqtt_client, mqtt_conn) = services::mqtt(aws_iot_certificates)?;
 
     let mqtt_execution = schedule::<8, _>(8000, move || {
         let executor = EspExecutor::new();
@@ -171,7 +195,7 @@ fn main() -> core::result::Result<(), InitError> {
         let mut tasks = heapless::Vec::new();
 
         executor.spawn_local_collect(
-            mqtt::send_task::<MQTT_MAX_TOPIC_LEN>(mqtt_topic_prefix, mqtt_client),
+            mqtt::send_task::<MQTT_MAX_TOPIC_LEN>(mqtt_client),
             &mut tasks,
         )?;
 

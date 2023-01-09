@@ -45,14 +45,15 @@ log = { version = "0.4", features = [
 embassy-futures = { version = "0.1" }
 embassy-sync = { version = "0.1", features = ["std"] }
 embassy-time = { version = "0.1" }
-static_cell = { version = "1" }
-once_cell = { version = "1.16.0" }
+once_cell = { version = "1.17.0" }
 anyhow = "1.0"
 serde = { version = "1", default-features = false }
 postcard = "1.0.2"
 time = { version = "0.3", features = ["macros", "formatting", "parsing"] }
 lazy_static = { version = "1.4.0" }
 fixed = { version = "1.21.0" }
+static_cell = { version = "1.0.0" }
+serde_json = "1.0.91"
 
 [package.metadata.espflash]
 partition_table = "partitions.csv"
