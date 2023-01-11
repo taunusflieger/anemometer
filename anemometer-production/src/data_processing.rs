@@ -84,7 +84,6 @@ impl WindDataHistory {
             wind_gust: 0.0,
         }
     }
-    #[allow(dead_code)]
     pub fn store_measurement(&mut self, speed: u16, direction: u16) {
         self.wind_speed_buffer.write(speed);
         self.wind_gust_buffer.write(speed);

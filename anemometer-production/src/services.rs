@@ -130,7 +130,6 @@ pub fn mqtt(
         },
         move |event| mqtt_parser.convert(event),
     )?;
-    info!("after EspMqttClient");
     let mqtt_client = mqtt_client.into_async();
 
     Ok((mqtt_client, mqtt_conn))
@@ -233,7 +232,7 @@ pub mod anemometer {
                 // let rps = cnt as f32 / 2.0 / (MEASUREMENT_INTERVAL as u32) as f32;
 
                 // TODO: Remove once anemometer is connected
-                let rps = (unsafe { esp_random() } % 0xff) as u16;
+                let rps = (unsafe { esp_random() } % 0xf) as u16;
                 let mut wind_historian = (*WIND_DATA_HISTORY).lock().unwrap();
                 wind_historian.store_measurement(rps, 0);
             })?;

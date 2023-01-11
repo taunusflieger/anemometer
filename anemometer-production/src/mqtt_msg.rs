@@ -14,6 +14,14 @@ pub const MQTT_TOPIC_POSTFIX_WIND_SPEED: &str = "/wind/speed";
 #[allow(dead_code)]
 pub const MQTT_TOPIC_POSTFIX_WIND_DIRECTION: &str = "/wind/direction";
 
+#[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+
+pub struct CmdMqttMsg {
+    pub cmd: String,
+    pub arg: String,
+}
+
 #[derive(Clone, Eq, PartialEq, Debug, Serialize, Deserialize)]
 pub enum MqttCommand {
     ExecOTAUpdate(OtaUrl),
@@ -52,7 +60,12 @@ impl MessageParser {
     where
         M: Message,
     {
-        info!("Message = {:?}", message.details());
+        info!(
+            "Message = {:?} {:?} {:?}",
+            message.topic(),
+            message.data(),
+            message.details()
+        );
         match message.details() {
             Details::Complete => Self::parse_command(message.topic().unwrap())
                 .and_then(|parser| parser(message.data())),
@@ -141,7 +154,7 @@ pub struct AWSShadowUpdate<'a> {
 }
 
 impl AWSShadowUpdate<'_> {
-    pub fn to_aws_device_update_msg(self, msg: &mut String) {
+    pub fn format_aws_device_update_msg(&self, msg: &mut String) {
         let json_msg = json!({
             "state": {
                 "reported": self

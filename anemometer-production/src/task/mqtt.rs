@@ -61,7 +61,7 @@ pub async fn receive_task(mut connection: impl Connection<Message = Option<MqttC
             };
 
         if let Some(message) = message {
-            //info!("receive_task [MQTT/CONNECTION]: {:?}", message);
+            info!("receive_task [MQTT/CONNECTION]: {:?}", message);
 
             if let Ok(Event::Received(Some(cmd))) = &message {
                 match cmd {
@@ -119,6 +119,45 @@ pub async fn send_task<const L: usize>(mut mqtt: impl Client + Publish) {
     */
     let mut app_event = APPLICATION_EVENT_CHANNEL.subscriber().unwrap();
     let mut app_data = APPLICATION_DATA_CHANNEL.subscriber().unwrap();
+    let mut cmd_topic = String::new();
+    let mut shadow_update_topic = String::new();
+    let mut device_id = String::new();
+
+    {
+        let aws_config = super::super::AWSCONFIG.lock().unwrap();
+        // need to remove tailing zeros otherwise CString will complain
+        let topic_prefix = core::str::from_utf8(
+            &(aws_config.topic_prefix[0..aws_config
+                .topic_prefix
+                .iter()
+                .position(|&x| x == 0)
+                .unwrap()]),
+        )
+        .unwrap();
+        let topic = core::str::from_utf8(
+            &(aws_config.cmd_topic[0..aws_config.cmd_topic.iter().position(|&x| x == 0).unwrap()]),
+        )
+        .unwrap();
+        cmd_topic.push_str(topic_prefix);
+        cmd_topic.push_str(topic);
+
+        let device_id_str = core::str::from_utf8(
+            &(aws_config.device_id[0..aws_config.device_id.iter().position(|&x| x == 0).unwrap()]),
+        )
+        .unwrap();
+        device_id.push_str(device_id_str);
+
+        // need to remove tailing zeros otherwise CString will complain
+        let shadow_update_str = core::str::from_utf8(
+            &(aws_config.shadow_update[0..aws_config
+                .shadow_update
+                .iter()
+                .position(|&x| x == 0)
+                .unwrap()]),
+        )
+        .unwrap();
+        shadow_update_topic.push_str(shadow_update_str);
+    }
 
     loop {
         let (conn_state, app_state_change, app_data) = match select3(
@@ -144,19 +183,8 @@ pub async fn send_task<const L: usize>(mut mqtt: impl Client + Publish) {
 
         if let Some(new_conn_state) = conn_state {
             if new_conn_state {
-                info!("send_task MQTT is now connected, subscribing");
-                let aws_config = super::super::AWSCONFIG.lock().unwrap();
-                // need to remove tailing zeros otherwise CString will complain
-                let shadow_update = core::str::from_utf8(
-                    &(aws_config.shadow_update[0..aws_config
-                        .shadow_update
-                        .iter()
-                        .position(|&x| x == 0)
-                        .unwrap()]),
-                )
-                .unwrap();
-                info!("Subscribing to {}", shadow_update);
-                match mqtt.subscribe(shadow_update, QoS::AtLeastOnce).await {
+                info!("send_task MQTT is now connected, subscribing {}", cmd_topic);
+                match mqtt.subscribe(cmd_topic.as_str(), QoS::AtLeastOnce).await {
                     Ok(_) => {}
                     Err(err) => {
                         error!("Subscribe failed: {:?}", err);
@@ -178,9 +206,10 @@ pub async fn send_task<const L: usize>(mut mqtt: impl Client + Publish) {
             let mut avg_speed = 0.0;
             let mut wind_gust = 0.0;
 
-            if let Ok(wind_historian) = (*WIND_DATA_HISTORY).lock() {
+            if let Ok(mut wind_historian) = (*WIND_DATA_HISTORY).lock() {
                 avg_speed = wind_historian.avg_speed();
                 wind_gust = wind_historian.gust_speed();
+                wind_historian.clear_wind_gust();
             };
 
             info!("send_task send wind speed = {avg_speed}, wind gust = {wind_gust}");
@@ -202,16 +231,10 @@ pub async fn send_task<const L: usize>(mut mqtt: impl Client + Publish) {
                             .unwrap()
                             .as_secs() as i64)
                             .to_string();
-                        let aws_config = super::super::AWSCONFIG.lock().unwrap();
-                        let device_id = core::str::from_utf8(
-                            &(aws_config.device_id
-                                [0..aws_config.device_id.iter().position(|&x| x == 0).unwrap()]),
-                        )
-                        .unwrap();
 
                         let msg = AWSShadowUpdate {
                             windDirText: "NN",
-                            deviceId: device_id,
+                            deviceId: device_id.as_str(),
                             timeStamp: time.as_str(),
                             epochTime: epoch.as_str(),
                             windDir: "0,0",
@@ -220,21 +243,17 @@ pub async fn send_task<const L: usize>(mut mqtt: impl Client + Publish) {
                         };
                         let mut buffer: String = String::new();
 
-                        // need to remove tailing zeros otherwise CString will complain
-                        let shadow_update = core::str::from_utf8(
-                            &(aws_config.shadow_update[0..aws_config
-                                .shadow_update
-                                .iter()
-                                .position(|&x| x == 0)
-                                .unwrap()]),
-                        )
-                        .unwrap();
-                        info!("Posting update to {}", shadow_update);
-                        msg.to_aws_device_update_msg(&mut buffer);
+                        info!("Posting update to {}", shadow_update_topic);
+                        msg.format_aws_device_update_msg(&mut buffer);
                         // TODO: check error handling this panics
                         if let Ok(_msg_id) = error::check!(
-                            mqtt.publish(shadow_update, QoS::AtLeastOnce, false, buffer.as_bytes())
-                                .await
+                            mqtt.publish(
+                                shadow_update_topic.as_str(),
+                                QoS::AtLeastOnce,
+                                false,
+                                buffer.as_bytes()
+                            )
+                            .await
                         ) {
                             info!("send_task published to $aws/things/anemometer/shadow/name/default_shadow/update");
                         }

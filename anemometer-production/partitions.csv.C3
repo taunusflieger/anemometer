@@ -3,8 +3,8 @@
 nvs,      data, nvs,     0x9000,  0x4000,
 otadata,  data, ota,     0xd000,  0x2000,
 phy_init, data, phy,     0xf000,  0x1000,
-factory,  app,  factory, ,        0x280000,
-ota_0,    app,  ota_0,   ,        0x280000,
-ota_1,    app,  ota_1,   ,        0x280000,
-conf,     data, nvs,     ,        0x10000,
+factory,  app,  factory, ,        0x14D000,
+ota_0,    app,  ota_0,   ,        0x14D000,
+ota_1,    app,  ota_1,   ,        0x14D000,
+conf,     data, nvs,     ,        0x3000,
 

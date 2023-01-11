@@ -39,6 +39,8 @@ pub struct AwsIoTSettings {
     pub shadow_delta: [u8; 128],
     pub shadow_documents: [u8; 128],
     pub device_id: [u8; 32],
+    pub topic_prefix: [u8; 128],
+    pub cmd_topic: [u8; 128],
 }
 
 #[derive(Debug)]
@@ -57,6 +59,8 @@ impl AwsIoTSettings {
             shadow_delta: [0; 128],
             shadow_documents: [0; 128],
             device_id: [0; 32],
+            topic_prefix: [0; 128],
+            cmd_topic: [0; 128],
         };
 
         let part = EspCustomNvsPartition::take(partition)?;
@@ -65,6 +69,8 @@ impl AwsIoTSettings {
         nvs.get_str("shadow_update", &mut settings.shadow_update)?;
         nvs.get_str("shadow_delta", &mut settings.shadow_delta)?;
         nvs.get_str("shadow_doc", &mut settings.shadow_documents)?;
+        nvs.get_str("topic_prefix", &mut settings.topic_prefix)?;
+        nvs.get_str("cmd_topic", &mut settings.cmd_topic)?;
 
         let nvs = EspCustomNvs::new(part, "device_data", false)?;
         nvs.get_str("device_id", &mut settings.device_id)?;

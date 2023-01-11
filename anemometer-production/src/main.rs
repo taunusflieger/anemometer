@@ -35,7 +35,7 @@
 use crate::configuration::AwsIoTSettings;
 use crate::services::*;
 use crate::state::*;
-use crate::task::{mqtt, ota::*};
+use crate::task::{httpd, mqtt, ota::*};
 use crate::utils::{datetime, errors::*};
 use channel_bridge::{asynch::pubsub, asynch::*};
 use configuration::AwsIoTCertificates;
@@ -114,21 +114,7 @@ fn main() -> core::result::Result<(), InitError> {
                 panic!();
             }
         });
-    /*
-        let ca_cert = core::str::from_utf8(&aws_iot_certificates.server_cert).unwrap();
-        info!("Server = {ca_cert}");
-        let cert = core::str::from_utf8(&aws_iot_certificates.device_cert).unwrap();
-        info!("Device = {cert}");
-        let priv_key = core::str::from_utf8(&aws_iot_certificates.private_key).unwrap();
-        info!("priv-key = {priv_key}");
 
-        let aws_iot_settings = AWSCONFIG.lock().unwrap();
-        let host_url = core::str::from_utf8(&aws_iot_settings.host_url).unwrap();
-        info!("AWS host: |{host_url}|");
-        let device_id = core::str::from_utf8(&aws_iot_settings.device_id).unwrap();
-        info!("AWS device-id: |{device_id}|");
-        drop(aws_iot_settings);
-    */
     let (wifi, wifi_notif) = wifi(
         peripherals.modem,
         sysloop.clone(),
@@ -153,8 +139,7 @@ fn main() -> core::result::Result<(), InitError> {
         executor.spawn_local_collect(wind_speed_demo_publisher_task(), &mut tasks)?;
 
         executor.spawn_local_collect(ota_task(), &mut tasks)?;
-        // executor.spawn_local_collect(http_server_task(), &mut tasks)?;
-        //executor.spawn_local_collect(sntp::sntp_task(), &mut tasks)?;
+        executor.spawn_local_collect(httpd::http_server_task(), &mut tasks)?;
 
         executor.spawn_local_collect(
             process_netif_state_change(netif_notifier(sysloop.clone()).unwrap()),

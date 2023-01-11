@@ -29,13 +29,12 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
+use crate::data_processing::*;
 use crate::services::http::*;
 use crate::state::*;
 use embassy_futures::select::{select, Either};
 use log::*;
 
-#[allow(dead_code)]
 pub async fn http_server_task() {
     // use channel_bridge::asynch::*;
     use embedded_svc::io::blocking::Write;
@@ -82,11 +81,19 @@ pub async fn http_server_task() {
 
                 info!("http_server_task: starting httpd on address: {:?}", ip);
                 if let Err(err) = s.fn_handler("/", embedded_svc::http::Method::Get, move |req| {
+                    let mut avg_speed = 0.0;
+                    let mut wind_gust = 0.0;
                     let mut headers = Headers::<1>::new();
                     headers.set_cache_control("no-store");
 
+                    if let Ok(wind_historian) = (*WIND_DATA_HISTORY).lock() {
+                        avg_speed = wind_historian.avg_speed();
+                        wind_gust = wind_historian.gust_speed();
+                    };
+                    let html = windspeed(avg_speed, wind_gust);
+
                     let mut resp = req.into_response(200, None, headers.as_slice())?;
-                    resp.write_all(FIRMWARE_VERSION.as_bytes())?;
+                    resp.write_all(html.as_bytes())?;
 
                     info!("Processing '/' request");
                     Ok(())
@@ -108,4 +115,29 @@ pub async fn http_server_task() {
         }
     }
     info!("http_server_task shutdown");
+}
+
+fn templated(content: impl AsRef<str>) -> String {
+    format!(
+        r#"
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>esp-rs web server</title>
+</head>
+<body>
+    {}
+</body>
+</html>
+"#,
+        content.as_ref()
+    )
+}
+
+fn windspeed(speed: f32, gust: f32) -> String {
+    templated(format!(
+        "Wind speed: {:.2} km/h\nWind gust: {:.2} km/h",
+        speed, gust
+    ))
 }

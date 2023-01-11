@@ -1,6 +1,6 @@
 [package]
 name = "esp32-anemometer"
-version = "0.1.21"
+version = "0.1.22"
 authors = ["Michael Zill <michael.zill@gmail.com>"]
 edition = "2021"
 resolver = "2"
@@ -13,7 +13,6 @@ debug = true    # Symbols are nice and they don't increase the size on Flash
 opt-level = "z"
 
 [features]
-pio = ["esp-idf-sys/pio"]
 
 [dependencies]
 embedded-hal = { git = "https://github.com/rust-embedded/embedded-hal", tag = "v1.0.0-alpha.9" }
@@ -63,3 +62,5 @@ embuild = "0.30.4"
 
 [patch.crates-io]
 #embedded-svc = { path = "../embedded-svc" }
+#esp-idf-sys = { git = "https://github.com/taunusflieger/esp-idf-sys" }
+#esp-idf-sys = { path = "../../esp-idf-sys" }
