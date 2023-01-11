@@ -1,4 +1,4 @@
-# ESP32-C3 / S3 Espressif based 3D printed Anemometer
+# ESP32-S3 Espressif based 3D printed Anemometer
 [![CI](https://github.com/taunusflieger/anemometer/actions/workflows/ci.yml/badge.svg)](https://github.com/taunusflieger/anemometer/actions/workflows/ci.yml)
 
 
