@@ -90,24 +90,6 @@ impl AwsIoTCertificates {
         let part = EspCustomNvsPartition::take(partition)?;
         let nvs = EspCustomNvs::new(part.clone(), "certificates", false)?;
 
-        if let Some(l) = nvs.len_str("server_cert")? {
-            // we need 1 byte more as the certificate needs to be
-            // a 0 terminated string
-            match settings.server_cert.try_reserve(l + 2) {
-                Ok(_) => {
-                    for _ in 1..l + 2 {
-                        settings.server_cert.push(0);
-                    }
-                    nvs.get_str("server_cert", &mut settings.server_cert[..])?;
-                }
-                Err(err) => {
-                    panic!("Failed to reserve emory for server certificate: {err}");
-                }
-            }
-        } else {
-            panic!("server_cert in nvs not found");
-        }
-
         if let Some(l) = nvs.len_str("device_cert")? {
             match settings.device_cert.try_reserve(l + 2) {
                 Ok(_) => {
