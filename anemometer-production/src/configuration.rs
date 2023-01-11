@@ -45,7 +45,6 @@ pub struct AwsIoTSettings {
 
 #[derive(Debug)]
 pub struct AwsIoTCertificates {
-    pub server_cert: Vec<u8>,
     pub device_cert: Vec<u8>,
     pub private_key: Vec<u8>,
     pub host_url: [u8; 128],
@@ -82,7 +81,6 @@ impl AwsIoTSettings {
 impl AwsIoTCertificates {
     pub fn new(partition: &str) -> Result<Self, EspError> {
         let mut settings = AwsIoTCertificates {
-            server_cert: Vec::new(),
             device_cert: Vec::new(),
             private_key: Vec::new(),
             host_url: [0; 128],

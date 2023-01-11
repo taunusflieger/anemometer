@@ -92,7 +92,6 @@ pub fn mqtt(
 > {
     let mut mqtt_parser = MessageParser::new();
 
-    let x509_server_cert = esp_idf_svc::tls::X509::pem_until_nul(&aws_certificates.server_cert[..]);
     let x509_client_cert = esp_idf_svc::tls::X509::pem_until_nul(&aws_certificates.device_cert[..]);
     let x509_client_priv_key =
         esp_idf_svc::tls::X509::pem_until_nul(&aws_certificates.private_key[..]);
@@ -122,10 +121,9 @@ pub fn mqtt(
         url,
         &MqttClientConfiguration {
             client_id: Some(device_id),
-            //crt_bundle_attach: Some(esp_idf_sys::esp_crt_bundle_attach),
-            server_certificate: Some(x509_server_cert),
             client_certificate: Some(x509_client_cert),
             private_key: Some(x509_client_priv_key),
+            crt_bundle_attach: Some(esp_idf_sys::esp_crt_bundle_attach),
             ..Default::default()
         },
         move |event| mqtt_parser.convert(event),
