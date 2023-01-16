@@ -45,7 +45,7 @@ const WRITE_DATA_BUF_SIZE: usize = 1024;
 
 pub async fn ota_task() {
     let mut subscriber = APPLICATION_EVENT_CHANNEL.subscriber().unwrap();
-
+    info!("OTA Task Started");
     loop {
         if let ApplicationStateChange::OTAUpdateRequest(url) = subscriber.next_message_pure().await
         {

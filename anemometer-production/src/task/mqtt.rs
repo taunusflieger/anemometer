@@ -105,12 +105,14 @@ pub async fn receive_task(mut connection: impl Connection<Message = Option<MqttC
 // in ESP IDF for MQTT.
 pub async fn send_task<const L: usize>(mut mqtt: impl Client + Publish) {
     let mut connected = false;
+    info!("Send Task Started");
     /*
         let topic = |topic_suffix| {
             heapless::String::<L>::from_str(topic_prefix)
                 .and_then(|mut s| s.push_str(topic_suffix).map(|_| s))
                 .unwrap_or_else(|_| panic!("failed to construct topic"))
         };
+
 
         let topic_commands = topic(MQTT_TOPIC_POSTFIX_COMMAND);
         let topic_wind_speed = topic(MQTT_TOPIC_POSTFIX_WIND_SPEED);
@@ -122,6 +124,7 @@ pub async fn send_task<const L: usize>(mut mqtt: impl Client + Publish) {
     let mut cmd_topic = String::new();
     let mut shadow_update_topic = String::new();
     let mut device_id = String::new();
+    let mut boot_timestamp = datetime::get_datetime().unwrap();
 
     {
         let aws_config = super::super::AWSCONFIG.lock().unwrap();
@@ -185,12 +188,14 @@ pub async fn send_task<const L: usize>(mut mqtt: impl Client + Publish) {
             if new_conn_state {
                 info!("send_task MQTT is now connected, subscribing {}", cmd_topic);
                 match mqtt.subscribe(cmd_topic.as_str(), QoS::AtLeastOnce).await {
-                    Ok(_) => {}
+                    Ok(_) => {
+                        connected = true;
+                    }
                     Err(err) => {
                         error!("Subscribe failed: {:?}", err);
+                        connected = false;
                     }
                 }
-                connected = true;
             } else {
                 info!("send_task MQTT disconnected");
                 connected = false;
@@ -215,15 +220,22 @@ pub async fn send_task<const L: usize>(mut mqtt: impl Client + Publish) {
             info!("send_task send wind speed = {avg_speed}, wind gust = {wind_gust}");
 
             if connected {
-                if let Ok(datetime) = datetime::get_datetime() {
+                if let Ok(now) = datetime::get_datetime() {
                     // check if we have a valid system time
-                    if datetime.year() > 1970 {
+                    if now.year() > 1970 {
                         let format = time::format_description::parse(
                             "[day].[month].[year] [hour]:[minute]:[second]",
                         )
                         .expect("Invalid format.");
 
-                        let time = datetime.format(&format).expect("Could not format time.");
+                        if boot_timestamp.year() == 1970 {
+                            boot_timestamp = now;
+                        }
+
+                        let time = now.format(&format).expect("Could not format time.");
+                        let boot_time = boot_timestamp
+                            .format(&format)
+                            .expect("Could not format time.");
                         let avg_speed_string = format!("{avg_speed:.2}").trim().replace('.', ",");
                         let wind_gust_string = format!("{wind_gust:.2}").trim().replace('.', ",");
                         let epoch = (SystemTime::now()
@@ -237,6 +249,7 @@ pub async fn send_task<const L: usize>(mut mqtt: impl Client + Publish) {
                             deviceId: device_id.as_str(),
                             timeStamp: time.as_str(),
                             epochTime: epoch.as_str(),
+                            bootTimeStamp: boot_time.as_str(),
                             windDir: "0,0",
                             windSpeed: avg_speed_string.as_str(),
                             windGust: wind_gust_string.as_str(),
@@ -256,6 +269,9 @@ pub async fn send_task<const L: usize>(mut mqtt: impl Client + Publish) {
                             .await
                         ) {
                             info!("send_task published to $aws/things/anemometer/shadow/name/default_shadow/update");
+                        } else {
+                            connected = false;
+                            error!("send_task failed to publish to $aws/things/anemometer/shadow/name/default_shadow/update");
                         }
                     } else {
                         info!("no vaild system time");

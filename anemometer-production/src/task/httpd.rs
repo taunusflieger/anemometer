@@ -40,6 +40,7 @@ pub async fn http_server_task() {
     use embedded_svc::io::blocking::Write;
     use embedded_svc::utils::http::Headers;
     use esp_idf_svc::http::server::Configuration;
+    info!("Task Started");
 
     const FIRMWARE_VERSION: &str = env!("CARGO_PKG_VERSION");
 

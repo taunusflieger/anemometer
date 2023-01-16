@@ -31,18 +31,15 @@
  */
 #![allow(incomplete_features)]
 #![feature(generic_const_exprs)]
-
 use crate::configuration::AwsIoTSettings;
 use crate::services::*;
 use crate::state::*;
-use crate::task::{httpd, mqtt, ota::*};
+use crate::task::{httpd, mqtt, ota::*, publisher};
 use crate::utils::{datetime, errors::*};
 use channel_bridge::{asynch::pubsub, asynch::*};
 use configuration::AwsIoTCertificates;
 use edge_executor::*;
 use edge_executor::{Local, Task};
-use embassy_futures::select::{select, Either};
-use embassy_time::{Duration, Timer};
 use embedded_svc::utils::asyncify::Asyncify;
 use embedded_svc::wifi::Wifi as WifiTrait;
 use esp_idf_hal::task::executor::EspExecutor;
@@ -136,7 +133,7 @@ fn main() -> core::result::Result<(), InitError> {
 
         executor.spawn_local_collect(process_wifi_state_change(wifi, wifi_notif), &mut tasks)?;
 
-        executor.spawn_local_collect(wind_speed_demo_publisher_task(), &mut tasks)?;
+        executor.spawn_local_collect(publisher::wind_speed_task(), &mut tasks)?;
 
         executor.spawn_local_collect(ota_task(), &mut tasks)?;
         executor.spawn_local_collect(httpd::http_server_task(), &mut tasks)?;
@@ -187,9 +184,6 @@ fn main() -> core::result::Result<(), InitError> {
         Ok((executor, tasks))
     });
 
-    // This is required to allow the low prio thread to start
-    std::thread::sleep(core::time::Duration::from_millis(2000));
-
     if let Ok(datetime) = datetime::get_datetime() {
         let format =
             time::format_description::parse("[day].[month].[year] [hour]:[minute]:[second]")
@@ -199,6 +193,8 @@ fn main() -> core::result::Result<(), InitError> {
         info!("System start time: {time}");
     }
 
+    // This is required to allow the low prio thread to start
+    std::thread::sleep(core::time::Duration::from_millis(2000));
     mid_prio_execution.join().unwrap();
     mqtt_execution.join().unwrap();
     low_prio_execution.join().unwrap();
@@ -268,36 +264,6 @@ pub async fn process_netif_state_change(mut state_changed_source: impl Receiver<
                     ip: assignment.ip_settings.ip,
                 })
                 .await;
-        }
-    }
-}
-
-async fn wind_speed_demo_publisher_task() {
-    let publisher = APPLICATION_DATA_CHANNEL.publisher().unwrap();
-    let mut app_event = APPLICATION_EVENT_CHANNEL.subscriber().unwrap();
-    loop {
-        let (timer_fired, app_state_change) = match select(
-            Timer::after(Duration::from_secs(
-                global_settings::DATA_REPORTING_INTERVAL,
-            )),
-            app_event.next_message_pure(),
-        )
-        .await
-        {
-            Either::First(_) => (Some(true), None),
-            Either::Second(app_state_change) => (None, Some(app_state_change)),
-        };
-        if let Some(ApplicationStateChange::OTAUpdateStarted) = app_state_change {
-            info!("wind_speed_demo_publisher_task OTA Update started shutting down wind_speed_demo_publisher task");
-            break;
-        }
-
-        if let Some(send_needed) = timer_fired {
-            if send_needed {
-                publisher
-                    .publish(ApplicationDataChange::ReportWindData)
-                    .await;
-            }
         }
     }
 }

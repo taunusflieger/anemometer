@@ -57,6 +57,9 @@ serde_json = "1.0.91"
 [package.metadata.espflash]
 partition_table = "partitions.csv"
 
+[package.metadata.esp-idf-sys]
+esp_idf_tools_install_dir = "global"
+esp_idf_version = "branch:release/v5.0"
 [build-dependencies]
 embuild = "0.30.4"
 

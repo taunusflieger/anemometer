@@ -1,0 +1,5 @@
+{
+    "rust-analyzer.checkOnSave.allTargets": false,
+    "rust-analyzer.checkOnSave.enable": true,
+    "rust-analyzer.inlayHints.closureReturnTypeHints.enable": "always"
+}

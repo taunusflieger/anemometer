@@ -16,7 +16,6 @@ pub const MQTT_TOPIC_POSTFIX_WIND_DIRECTION: &str = "/wind/direction";
 
 #[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
-
 pub struct CmdMqttMsg {
     pub cmd: String,
     pub arg: String,
@@ -66,6 +65,7 @@ impl MessageParser {
             message.data(),
             message.details()
         );
+
         match message.details() {
             Details::Complete => Self::parse_command(message.topic().unwrap())
                 .and_then(|parser| parser(message.data())),
@@ -148,6 +148,7 @@ pub struct AWSShadowUpdate<'a> {
     pub deviceId: &'a str,
     pub timeStamp: &'a str,
     pub epochTime: &'a str,
+    pub bootTimeStamp: &'a str,
     pub windDir: &'a str,
     pub windSpeed: &'a str,
     pub windGust: &'a str,

@@ -56,9 +56,9 @@ pub static NETWORK_EVENT_CHANNEL: PubSubChannel<
 pub static APPLICATION_EVENT_CHANNEL: PubSubChannel<
     CriticalSectionRawMutex,
     ApplicationStateChange,
-    5,
-    5,
-    5,
+    6,
+    6,
+    6,
 > = PubSubChannel::new();
 
 #[allow(dead_code)]
