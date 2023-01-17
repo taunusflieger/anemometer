@@ -29,6 +29,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+pub mod aws_credential_service;
 pub mod datetime;
 pub mod error;
 pub mod errors;

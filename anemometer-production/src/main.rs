@@ -103,7 +103,7 @@ fn main() -> core::result::Result<(), InitError> {
     let mut anemometer = anemometer::AnemometerDriver::new(anemometer_peripherals.pulse).unwrap();
     let _anemometer_timer = anemometer.set_measurement_timer().unwrap();
 
-    let aws_iot_certificates: &'static mut AwsIoTCertificates =
+    let aws_iot_certificates: &'static AwsIoTCertificates =
         AWSCERTIFICATES.init(match AwsIoTCertificates::new("conf") {
             Ok(settings) => settings,
             Err(err) => {
@@ -135,7 +135,7 @@ fn main() -> core::result::Result<(), InitError> {
 
         executor.spawn_local_collect(publisher::wind_speed_task(), &mut tasks)?;
 
-        executor.spawn_local_collect(ota_task(), &mut tasks)?;
+        executor.spawn_local_collect(ota_task(aws_iot_certificates), &mut tasks)?;
         executor.spawn_local_collect(httpd::http_server_task(), &mut tasks)?;
 
         executor.spawn_local_collect(

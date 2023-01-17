@@ -5,6 +5,11 @@ use esp_idf_svc::errors::EspIOError;
 use esp_idf_sys::EspError;
 
 #[derive(Debug)]
+pub enum AwsError {
+    AwsCredentialsError,
+}
+
+#[derive(Debug)]
 pub enum OtaError {
     FwImageNotFound,
     FwSameAsInvalidFw,
@@ -13,6 +18,14 @@ pub enum OtaError {
     ImageLoadIncomplete,
     HttpError,
     OtaApiError,
+}
+
+impl fmt::Display for AwsError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::AwsCredentialsError => write!(f, "Failed to retrive AWS credentials"),
+        }
+    }
 }
 
 impl fmt::Display for OtaError {
@@ -38,6 +51,7 @@ pub enum InitError {
     EspError(EspError),
     SpawnError(SpawnError),
     OtaError(OtaError),
+    AwsError(AwsError),
 }
 
 impl From<EspError> for InitError {
@@ -61,5 +75,11 @@ impl From<SpawnError> for InitError {
 impl From<OtaError> for InitError {
     fn from(e: OtaError) -> Self {
         Self::OtaError(e)
+    }
+}
+
+impl From<AwsError> for InitError {
+    fn from(e: AwsError) -> Self {
+        Self::AwsError(e)
     }
 }

@@ -29,8 +29,9 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+use crate::configuration::AwsIoTCertificates;
 use crate::state::*;
-use crate::utils::errors::*;
+use crate::utils::{aws_credential_service::*, errors::*};
 use core::mem;
 use core::ptr;
 use embassy_time::{Duration, Timer};
@@ -42,8 +43,12 @@ use heapless::String;
 use log::*;
 
 const WRITE_DATA_BUF_SIZE: usize = 1024;
+const AWS_S3_URL: &str = "https://s3.eu-west-1.amazonaws.com";
+const AWS_REGION: &str = "eu-west-1";
+const AWS_S3_BUCKET: &str = "anemometer-fw-store";
+const FIRMWARE_FILE_NAME: &str = "firmware-0.1.2.bin";
 
-pub async fn ota_task() {
+pub async fn ota_task(aws_certificates: &'static AwsIoTCertificates) {
     let mut subscriber = APPLICATION_EVENT_CHANNEL.subscriber().unwrap();
     info!("OTA Task Started");
     loop {
@@ -59,7 +64,13 @@ pub async fn ota_task() {
             publisher.publish(data).await;
             Timer::after(Duration::from_secs(2)).await;
 
-            if let Err(err) = perform_update(url.as_str()) {
+            if let Err(err) = perform_update(
+                AWS_S3_URL,
+                AWS_REGION,
+                AWS_S3_BUCKET,
+                FIRMWARE_FILE_NAME,
+                aws_certificates,
+            ) {
                 error!("Firmware update failed: {err}");
             } else {
                 info!("Firmware update successful. Restarting device.");
@@ -75,12 +86,29 @@ pub async fn ota_task() {
 
 // TODO: as of Dec 2022 there is no async http client implementation for ESP IDF.
 // once an async implementation becomes available rework this code to become async
-fn perform_update(firmware_url: &str) -> Result<(), OtaError> {
+fn perform_update(
+    aws_s3_url: &str,
+    aws_region: &str,
+    aws_bucket: &str,
+    firmware_file_name: &str,
+    aws_certificates: &'static AwsIoTCertificates,
+) -> Result<(), OtaError> {
     let content_length: usize;
     let mut ota_write_data: [u8; WRITE_DATA_BUF_SIZE] = [0; WRITE_DATA_BUF_SIZE];
     let mut invalid_fw_version: heapless::String<32> = String::new();
     let mut found_invalid_fw = false;
     let mut update_summary: heapless::String<410> = String::new();
+
+    let aws_credentials = Credentials::new(aws_certificates).unwrap();
+
+    let firmware_url = signe_url(
+        aws_credentials,
+        aws_s3_url,
+        aws_region,
+        aws_bucket,
+        firmware_file_name,
+    )
+    .unwrap();
 
     let mut client = EspHttpConnection::new(&Configuration {
         buffer_size: Some(WRITE_DATA_BUF_SIZE),
@@ -89,7 +117,7 @@ fn perform_update(firmware_url: &str) -> Result<(), OtaError> {
     .expect("creation of EspHttpConnection should have worked");
 
     info!("EspHttpConnection created");
-    let _resp = client.initiate_request(embedded_svc::http::Method::Get, firmware_url, &[]);
+    let _resp = client.initiate_request(embedded_svc::http::Method::Get, &firmware_url, &[]);
 
     if let Err(err) = client.initiate_response() {
         error!("Error initiate response {}", err);

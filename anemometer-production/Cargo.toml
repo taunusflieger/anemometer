@@ -52,7 +52,8 @@ time = { version = "0.3", features = ["macros", "formatting", "parsing"] }
 lazy_static = { version = "1.4.0" }
 fixed = { version = "1.21.0" }
 static_cell = { version = "1.0.0" }
-serde_json = "1.0.91"
+serde_json = { version = "1.0.91" }
+rusty-s3 = { version = "0.4.0" }
 
 [package.metadata.espflash]
 partition_table = "partitions.csv"
