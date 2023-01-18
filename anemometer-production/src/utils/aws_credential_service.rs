@@ -1,3 +1,34 @@
+/*
+ * ESP32 Anemometer
+ *
+ * MIT license
+ *
+ * Copyright (c) 2021-2023 Michael Zill
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+ * SOFTWARE.
+ *
+ * Apache license, Version 2.0
+ *
+ * Copyright (c) 2021-2023 Michael Zill
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 use crate::configuration::AwsIoTCertificates;
 use crate::utils::errors::*;
 use esp_idf_svc::http::client::{Configuration, EspHttpConnection};
@@ -12,8 +43,6 @@ use std::time::Duration;
 const WRITE_DATA_BUF_SIZE: usize = 1024;
 // Lifetime of the generated AWS token
 const AWS_TOKEN_LIFETIME: u64 = 60 * 10;
-const AWS_CREDENTIAL_PROVIDER_ENPOINT: &str =
-    "https://c2syniqfqg2c95.credentials.iot.eu-west-1.amazonaws.com/role-aliases/WeatherStationInstrument-s3-access-role-alias/credentials";
 
 #[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -34,6 +63,22 @@ impl Credentials {
     pub fn new(aws_certificates: &'static AwsIoTCertificates) -> Result<Self, AwsError> {
         let content_length: usize;
         let mut access_key_buffer: [u8; WRITE_DATA_BUF_SIZE] = [0; WRITE_DATA_BUF_SIZE];
+        let mut credential_provider_endpoint: String = String::new();
+
+        {
+            let aws_config = super::super::AWSCONFIG.lock().unwrap();
+            // need to remove tailing zeros otherwise CString will complain
+            credential_provider_endpoint.push_str(
+                core::str::from_utf8(
+                    &(aws_config.credential_provider_endpoint[0..aws_config
+                        .credential_provider_endpoint
+                        .iter()
+                        .position(|&x| x == 0)
+                        .unwrap()]),
+                )
+                .unwrap(),
+            );
+        }
 
         let x509_client_cert =
             esp_idf_svc::tls::X509::pem_until_nul(&aws_certificates.device_cert[..]);
@@ -51,7 +96,7 @@ impl Credentials {
 
         let _resp = client.initiate_request(
             embedded_svc::http::Method::Get,
-            AWS_CREDENTIAL_PROVIDER_ENPOINT,
+            &credential_provider_endpoint,
             &[],
         );
 
@@ -115,8 +160,6 @@ impl Credentials {
     }
 }
 
-//
-// signe_url(.., "https://s3.eu-west-1.amazonaws.com", "eu-west-1", "anemometer-fw-store", "firmware-0.1.2.bin" )
 pub fn signe_url(
     aws_credentials: Credentials,
     endpoint: &str,

@@ -170,7 +170,6 @@ fn perform_update(
         error!("download fw image failed. Server response = {http_status}");
         return Err(OtaError::FwImageNotFound);
     }
-    info!("client_status");
 
     if let Some(len) = client.header("Content-Length") {
         content_length = len.parse().unwrap();
@@ -182,8 +181,6 @@ fn perform_update(
         error!("Error content-length too short. Length = {content_length}");
         return Err(OtaError::FwImageNotFound);
     }
-
-    info!("Content-length: {:?}", content_length);
 
     info!("initiating OTA update");
 
