@@ -50,10 +50,7 @@ pub async fn receive_task(mut connection: impl Connection<Message = Option<MqttC
     loop {
         let (message, app_state_change) =
             match select(connection.next(), app_event.next_message_pure()).await {
-                Either::First(message) => {
-                    //info!("receive_task recv MQTT_CONNECT_SIGNAL");
-                    (message, None)
-                }
+                Either::First(message) => (message, None),
                 Either::Second(app_state_change) => {
                     info!("receive_task recv app_state_change");
                     (None, Some(app_state_change))
@@ -106,19 +103,7 @@ pub async fn receive_task(mut connection: impl Connection<Message = Option<MqttC
 pub async fn send_task<const L: usize>(mut mqtt: impl Client + Publish) {
     let mut connected = false;
     info!("Send Task Started");
-    /*
-        let topic = |topic_suffix| {
-            heapless::String::<L>::from_str(topic_prefix)
-                .and_then(|mut s| s.push_str(topic_suffix).map(|_| s))
-                .unwrap_or_else(|_| panic!("failed to construct topic"))
-        };
 
-
-        let topic_commands = topic(MQTT_TOPIC_POSTFIX_COMMAND);
-        let topic_wind_speed = topic(MQTT_TOPIC_POSTFIX_WIND_SPEED);
-        #[allow(unused)]
-        let topic_wind_angle = topic(MQTT_TOPIC_POSTFIX_WIND_DIRECTION);
-    */
     let mut app_event = APPLICATION_EVENT_CHANNEL.subscriber().unwrap();
     let mut app_data = APPLICATION_DATA_CHANNEL.subscriber().unwrap();
     let mut cmd_topic = String::new();
@@ -127,10 +112,9 @@ pub async fn send_task<const L: usize>(mut mqtt: impl Client + Publish) {
     let mut boot_timestamp = datetime::get_datetime().unwrap();
 
     {
-        info!("before lock()");
         let aws_config = super::super::AWSCONFIG.lock().unwrap();
-        info!("after lock()");
         // need to remove tailing zeros otherwise CString will complain
+
         let topic_prefix = core::str::from_utf8(
             &(aws_config.topic_prefix[0..aws_config
                 .topic_prefix
@@ -139,6 +123,7 @@ pub async fn send_task<const L: usize>(mut mqtt: impl Client + Publish) {
                 .unwrap()]),
         )
         .unwrap();
+
         let topic_postfix = core::str::from_utf8(
             &(aws_config.cmd_topic_postfix[0..aws_config
                 .cmd_topic_postfix
@@ -152,6 +137,7 @@ pub async fn send_task<const L: usize>(mut mqtt: impl Client + Publish) {
             &(aws_config.device_id[0..aws_config.device_id.iter().position(|&x| x == 0).unwrap()]),
         )
         .unwrap();
+
         device_id.push_str(device_id_str);
 
         // build topic string specific for device id

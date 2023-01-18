@@ -72,46 +72,23 @@ impl AwsIoTSettings {
             s3_fw_bucket: [0; 32],
             credential_provider_endpoint: [0; 180],
         };
-        info!("Loading AwsIoTSettings");
 
         let part = EspCustomNvsPartition::take(partition)?;
 
         let nvs = EspCustomNvs::new(part.clone(), "aws_settings", false)?;
-        if let Err(err) = nvs.get_str("things_prefix", &mut settings.things_prefix) {
-            error!("failed to load config data things_prefix: {}", err);
-        }
-        if let Err(err) = nvs.get_str("shadow_update", &mut settings.shadow_update_postfix) {
-            error!("failed to load config data shadow_update_postfix: {}", err);
-        }
-        if let Err(err) = nvs.get_str("shadow_delta", &mut settings.shadow_delta_postfix) {
-            error!("failed to load config data shadow_delta_postfix: {}", err);
-        }
-        if let Err(err) = nvs.get_str("shadow_doc", &mut settings.shadow_documents_postfix) {
-            error!("failed to load config data shadow_doc_postfix: {}", err);
-        }
-        if let Err(err) = nvs.get_str("topic_prefix", &mut settings.topic_prefix) {
-            error!("failed to load config data topic_prefix: {}", err);
-        }
-        if let Err(err) = nvs.get_str("cmd_topic", &mut settings.cmd_topic_postfix) {
-            error!("failed to load config data cmd_topic_postfix: {}", err);
-        }
-        if let Err(err) = nvs.get_str("region", &mut settings.region) {
-            error!("failed to load config data region: {}", err);
-        }
-        if let Err(err) = nvs.get_str("s3_url", &mut settings.s3_url) {
-            error!("failed to load config data s3_url: {}", err);
-        }
-        if let Err(err) = nvs.get_str("s3_fw_bucket", &mut settings.s3_fw_bucket) {
-            error!("failed to load config data s3_fw_bucket: {}", err);
-        }
-        if let Err(err) = nvs.get_str("cred_prov_ep", &mut settings.credential_provider_endpoint) {
-            error!("failed to load config data credent_prov_endp: {}", err);
-        }
+        nvs.get_str("things_prefix", &mut settings.things_prefix)?;
+        nvs.get_str("shadow_update", &mut settings.shadow_update_postfix)?;
+        nvs.get_str("shadow_delta", &mut settings.shadow_delta_postfix)?;
+        nvs.get_str("shadow_doc", &mut settings.shadow_documents_postfix)?;
+        nvs.get_str("topic_prefix", &mut settings.topic_prefix)?;
+        nvs.get_str("cmd_topic", &mut settings.cmd_topic_postfix)?;
+        nvs.get_str("region", &mut settings.region)?;
+        nvs.get_str("s3_url", &mut settings.s3_url)?;
+        nvs.get_str("s3_fw_bucket", &mut settings.s3_fw_bucket)?;
+        nvs.get_str("cred_prov_ep", &mut settings.credential_provider_endpoint)?;
 
         let nvs = EspCustomNvs::new(part, "device_data", false)?;
-        if let Err(err) = nvs.get_str("device_id", &mut settings.device_id) {
-            error!("failed to load config data device_id: {}", err);
-        }
+        nvs.get_str("device_id", &mut settings.device_id)?;
 
         Ok(settings)
     }
@@ -162,14 +139,10 @@ impl AwsIoTCertificates {
         }
 
         let nvs = EspCustomNvs::new(part.clone(), "aws_settings", false)?;
-        if let Err(err) = nvs.get_str("mqtt_endpoint", &mut settings.mqtt_endpoint) {
-            error!("failed to load config data mqtt_endpoint: {}", err);
-        }
+        nvs.get_str("mqtt_endpoint", &mut settings.mqtt_endpoint)?;
 
         let nvs = EspCustomNvs::new(part, "device_data", false)?;
-        if let Err(err) = nvs.get_str("device_id", &mut settings.device_id) {
-            error!("failed to load config data device_id: {}", err);
-        }
+        nvs.get_str("device_id", &mut settings.device_id)?;
 
         Ok(settings)
     }
