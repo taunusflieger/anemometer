@@ -1,6 +1,6 @@
 [package]
 name = "esp32-anemometer"
-version = "0.1.22"
+version = "0.1.26"
 authors = ["Michael Zill <michael.zill@gmail.com>"]
 edition = "2021"
 resolver = "2"

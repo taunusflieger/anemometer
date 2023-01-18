@@ -268,10 +268,13 @@ pub async fn send_task<const L: usize>(mut mqtt: impl Client + Publish) {
                             )
                             .await
                         ) {
-                            info!("send_task published to $aws/things/anemometer/shadow/name/default_shadow/update");
+                            info!("send_task published to {}", shadow_update_topic.as_str());
                         } else {
                             connected = false;
-                            error!("send_task failed to publish to $aws/things/anemometer/shadow/name/default_shadow/update");
+                            error!(
+                                "send_task failed to publish to {}",
+                                shadow_update_topic.as_str()
+                            );
                         }
                     } else {
                         info!("no vaild system time");
@@ -279,7 +282,8 @@ pub async fn send_task<const L: usize>(mut mqtt: impl Client + Publish) {
                 }
             } else {
                 info!(
-                    "send_task client not connected, skipping publishment to  $aws/things/anemometer/shadow/name/default_shadow/update"
+                    "send_task client not connected, skipping publishment to {}",
+                    shadow_update_topic.as_str()
                 );
             }
         }

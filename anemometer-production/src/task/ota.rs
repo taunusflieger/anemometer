@@ -42,19 +42,20 @@ use esp_idf_sys::*;
 use heapless::String;
 use log::*;
 
-const WRITE_DATA_BUF_SIZE: usize = 1024;
+const WRITE_DATA_BUF_SIZE: usize = 8196;
+const TX_BUF_SIZE: usize = 4096;
 const AWS_S3_URL: &str = "https://s3.eu-west-1.amazonaws.com";
 const AWS_REGION: &str = "eu-west-1";
 const AWS_S3_BUCKET: &str = "anemometer-fw-store";
-const FIRMWARE_FILE_NAME: &str = "firmware-0.1.2.bin";
 
 pub async fn ota_task(aws_certificates: &'static AwsIoTCertificates) {
     let mut subscriber = APPLICATION_EVENT_CHANNEL.subscriber().unwrap();
     info!("OTA Task Started");
     loop {
-        if let ApplicationStateChange::OTAUpdateRequest(url) = subscriber.next_message_pure().await
+        if let ApplicationStateChange::OTAUpdateRequest(firmware_file_name) =
+            subscriber.next_message_pure().await
         {
-            info!("processing OTA request for URL = {}", url);
+            info!("processing OTA request for {}", firmware_file_name);
 
             let publisher = APPLICATION_EVENT_CHANNEL.publisher().unwrap();
 
@@ -68,7 +69,7 @@ pub async fn ota_task(aws_certificates: &'static AwsIoTCertificates) {
                 AWS_S3_URL,
                 AWS_REGION,
                 AWS_S3_BUCKET,
-                FIRMWARE_FILE_NAME,
+                firmware_file_name.as_str(),
                 aws_certificates,
             ) {
                 error!("Firmware update failed: {err}");
@@ -112,12 +113,22 @@ fn perform_update(
 
     let mut client = EspHttpConnection::new(&Configuration {
         buffer_size: Some(WRITE_DATA_BUF_SIZE),
+        buffer_size_tx: Some(TX_BUF_SIZE),
+        crt_bundle_attach: Some(esp_idf_sys::esp_crt_bundle_attach),
         ..Default::default()
     })
     .expect("creation of EspHttpConnection should have worked");
 
-    info!("EspHttpConnection created");
-    let _resp = client.initiate_request(embedded_svc::http::Method::Get, &firmware_url, &[]);
+    let _resp = match client.initiate_request(
+        embedded_svc::http::Method::Get,
+        firmware_url.as_str(),
+        &[],
+    ) {
+        Ok(c) => c,
+        Err(err) => {
+            error!("Failed to initiate request {}", err);
+        }
+    };
 
     if let Err(err) = client.initiate_response() {
         error!("Error initiate response {}", err);
@@ -129,6 +140,7 @@ fn perform_update(
         error!("download fw image failed. Server response = {http_status}");
         return Err(OtaError::FwImageNotFound);
     }
+    info!("client_status");
 
     if let Some(len) = client.header("Content-Length") {
         content_length = len.parse().unwrap();
@@ -232,6 +244,7 @@ fn perform_update(
         }
 
         bytes_read_total += data_read;
+        info!("bytes read: {}", bytes_read_total);
 
         if data_read > 0 {
             if let Err(err) = ota_update.write(&ota_write_data) {

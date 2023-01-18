@@ -1,2 +1,2 @@
 #!/bin/sh
-docker run -it hivemq/mqtt-cli pub -i mypub -t anemometer/command/ota_update -m http://192.168.100.86/bin/firmware-0.1.1.bin -h 192.168.100.86 
+aws iot-data publish --topic arn:aws:iot:eu-west-1:102167871435:thing/$1/command/ota_update  --cli-binary-format raw-in-base64-out --payload $2

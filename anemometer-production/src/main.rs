@@ -127,7 +127,7 @@ fn main() -> core::result::Result<(), InitError> {
     }
     .set()?;
 
-    let mid_prio_execution = schedule::<8, _>(30000, move || {
+    let mid_prio_execution = schedule::<8, _>(40000, move || {
         let executor = EspExecutor::new();
         let mut tasks = heapless::Vec::new();
 

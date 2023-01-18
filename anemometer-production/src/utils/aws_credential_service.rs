@@ -13,7 +13,7 @@ const WRITE_DATA_BUF_SIZE: usize = 1024;
 // Lifetime of the generated AWS token
 const AWS_TOKEN_LIFETIME: u64 = 60 * 10;
 const AWS_CREDENTIAL_PROVIDER_ENPOINT: &str =
-    "c2syniqfqg2c95.credentials.iot.eu-west-1.amazonaws.com";
+    "https://c2syniqfqg2c95.credentials.iot.eu-west-1.amazonaws.com/role-aliases/WeatherStationInstrument-s3-access-role-alias/credentials";
 
 #[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -93,7 +93,7 @@ impl Credentials {
 
             if data_read > 0 {
                 access_keys
-                    .push_str(core::str::from_utf8(&access_key_buffer[0..data_read - 1]).unwrap());
+                    .push_str(core::str::from_utf8(&access_key_buffer[0..data_read]).unwrap());
             }
 
             // Check if we have read an entire buffer. If not,
@@ -102,6 +102,7 @@ impl Credentials {
                 break;
             }
         }
+        info!("Credential Provider response = {}", access_keys);
 
         let deserialized: Root = match serde_json::from_str(&access_keys) {
             Ok(d) => d,
@@ -113,6 +114,7 @@ impl Credentials {
                 return Err(AwsError::AwsCredentialsError);
             }
         };
+        info!("Credentials: {:?}", deserialized.credentials);
 
         Ok(deserialized.credentials)
     }
@@ -137,14 +139,15 @@ pub fn signe_url(
 
     info!("bucket = {:?}", bucket);
 
-    let credentials = rusty_s3::Credentials::new(
+    let credentials = rusty_s3::Credentials::new_with_token(
         aws_credentials.access_key_id,
         aws_credentials.secret_access_key,
+        aws_credentials.session_token,
     );
     // signing a request
     let presigned_url_duration = Duration::from_secs(AWS_TOKEN_LIFETIME);
     let action = bucket.get_object(Some(&credentials), fw_file_name);
     let signed_url = action.sign(presigned_url_duration);
     info!("curl '{}'", signed_url);
-    Ok(String::from("hallo"))
+    Ok(signed_url.to_string())
 }
