@@ -1,0 +1,3 @@
+[submodule "anemometer-aws-secrets"]
+	path = anemometer-aws-secrets
+	url = https://github.com/taunusflieger/anemometer-aws-secrets.git

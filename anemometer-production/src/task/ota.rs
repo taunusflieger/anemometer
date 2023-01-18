@@ -44,13 +44,43 @@ use log::*;
 
 const WRITE_DATA_BUF_SIZE: usize = 8196;
 const TX_BUF_SIZE: usize = 4096;
-const AWS_S3_URL: &str = "https://s3.eu-west-1.amazonaws.com";
-const AWS_REGION: &str = "eu-west-1";
-const AWS_S3_BUCKET: &str = "anemometer-fw-store";
 
 pub async fn ota_task(aws_certificates: &'static AwsIoTCertificates) {
     let mut subscriber = APPLICATION_EVENT_CHANNEL.subscriber().unwrap();
     info!("OTA Task Started");
+    let mut s3_url: std::string::String = std::string::String::new();
+    let mut s3_fw_bucket: std::string::String = std::string::String::new();
+    let mut aws_region: std::string::String = std::string::String::new();
+
+    {
+        let aws_config = super::super::AWSCONFIG.lock().unwrap();
+        // need to remove tailing zeros otherwise CString will complain
+        s3_url.push_str(
+            core::str::from_utf8(
+                &(aws_config.s3_url[0..aws_config.s3_url.iter().position(|&x| x == 0).unwrap()]),
+            )
+            .unwrap(),
+        );
+
+        s3_fw_bucket.push_str(
+            core::str::from_utf8(
+                &(aws_config.s3_fw_bucket[0..aws_config
+                    .s3_fw_bucket
+                    .iter()
+                    .position(|&x| x == 0)
+                    .unwrap()]),
+            )
+            .unwrap(),
+        );
+
+        aws_region.push_str(
+            core::str::from_utf8(
+                &(aws_config.region[0..aws_config.region.iter().position(|&x| x == 0).unwrap()]),
+            )
+            .unwrap(),
+        );
+    }
+
     loop {
         if let ApplicationStateChange::OTAUpdateRequest(firmware_file_name) =
             subscriber.next_message_pure().await
@@ -66,10 +96,10 @@ pub async fn ota_task(aws_certificates: &'static AwsIoTCertificates) {
             Timer::after(Duration::from_secs(2)).await;
 
             if let Err(err) = perform_update(
-                AWS_S3_URL,
-                AWS_REGION,
-                AWS_S3_BUCKET,
-                firmware_file_name.as_str(),
+                &s3_url,
+                &aws_region,
+                &s3_fw_bucket,
+                &firmware_file_name,
                 aws_certificates,
             ) {
                 error!("Firmware update failed: {err}");

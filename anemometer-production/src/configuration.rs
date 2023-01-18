@@ -32,47 +32,86 @@
 
 use esp_idf_svc::nvs::*;
 use esp_idf_sys::*;
+use log::*;
 
 #[derive(Debug, Copy, Clone)]
 pub struct AwsIoTSettings {
-    pub shadow_update: [u8; 128],
-    pub shadow_delta: [u8; 128],
-    pub shadow_documents: [u8; 128],
+    pub things_prefix: [u8; 24],
+    pub shadow_update_postfix: [u8; 128],
+    pub shadow_delta_postfix: [u8; 128],
+    pub shadow_documents_postfix: [u8; 128],
     pub device_id: [u8; 32],
     pub topic_prefix: [u8; 128],
-    pub cmd_topic: [u8; 128],
+    pub cmd_topic_postfix: [u8; 128],
+    pub region: [u8; 32],
+    pub s3_url: [u8; 128],
+    pub s3_fw_bucket: [u8; 32],
+    pub credential_provider_endpoint: [u8; 180],
 }
 
 #[derive(Debug)]
 pub struct AwsIoTCertificates {
     pub device_cert: Vec<u8>,
     pub private_key: Vec<u8>,
-    pub host_url: [u8; 128],
+    pub mqtt_endpoint: [u8; 128],
     pub device_id: [u8; 32],
 }
 
 impl AwsIoTSettings {
     pub fn new(partition: &str) -> Result<Self, EspError> {
         let mut settings = AwsIoTSettings {
-            shadow_update: [0; 128],
-            shadow_delta: [0; 128],
-            shadow_documents: [0; 128],
+            things_prefix: [0; 24],
+            shadow_update_postfix: [0; 128],
+            shadow_delta_postfix: [0; 128],
+            shadow_documents_postfix: [0; 128],
             device_id: [0; 32],
             topic_prefix: [0; 128],
-            cmd_topic: [0; 128],
+            cmd_topic_postfix: [0; 128],
+            region: [0; 32],
+            s3_url: [0; 128],
+            s3_fw_bucket: [0; 32],
+            credential_provider_endpoint: [0; 180],
         };
+        info!("Loading AwsIoTSettings");
 
         let part = EspCustomNvsPartition::take(partition)?;
 
         let nvs = EspCustomNvs::new(part.clone(), "aws_settings", false)?;
-        nvs.get_str("shadow_update", &mut settings.shadow_update)?;
-        nvs.get_str("shadow_delta", &mut settings.shadow_delta)?;
-        nvs.get_str("shadow_doc", &mut settings.shadow_documents)?;
-        nvs.get_str("topic_prefix", &mut settings.topic_prefix)?;
-        nvs.get_str("cmd_topic", &mut settings.cmd_topic)?;
+        if let Err(err) = nvs.get_str("things_prefix", &mut settings.things_prefix) {
+            error!("failed to load config data things_prefix: {}", err);
+        }
+        if let Err(err) = nvs.get_str("shadow_update", &mut settings.shadow_update_postfix) {
+            error!("failed to load config data shadow_update_postfix: {}", err);
+        }
+        if let Err(err) = nvs.get_str("shadow_delta", &mut settings.shadow_delta_postfix) {
+            error!("failed to load config data shadow_delta_postfix: {}", err);
+        }
+        if let Err(err) = nvs.get_str("shadow_doc", &mut settings.shadow_documents_postfix) {
+            error!("failed to load config data shadow_doc_postfix: {}", err);
+        }
+        if let Err(err) = nvs.get_str("topic_prefix", &mut settings.topic_prefix) {
+            error!("failed to load config data topic_prefix: {}", err);
+        }
+        if let Err(err) = nvs.get_str("cmd_topic", &mut settings.cmd_topic_postfix) {
+            error!("failed to load config data cmd_topic_postfix: {}", err);
+        }
+        if let Err(err) = nvs.get_str("region", &mut settings.region) {
+            error!("failed to load config data region: {}", err);
+        }
+        if let Err(err) = nvs.get_str("s3_url", &mut settings.s3_url) {
+            error!("failed to load config data s3_url: {}", err);
+        }
+        if let Err(err) = nvs.get_str("s3_fw_bucket", &mut settings.s3_fw_bucket) {
+            error!("failed to load config data s3_fw_bucket: {}", err);
+        }
+        if let Err(err) = nvs.get_str("cred_prov_ep", &mut settings.credential_provider_endpoint) {
+            error!("failed to load config data credent_prov_endp: {}", err);
+        }
 
         let nvs = EspCustomNvs::new(part, "device_data", false)?;
-        nvs.get_str("device_id", &mut settings.device_id)?;
+        if let Err(err) = nvs.get_str("device_id", &mut settings.device_id) {
+            error!("failed to load config data device_id: {}", err);
+        }
 
         Ok(settings)
     }
@@ -83,10 +122,10 @@ impl AwsIoTCertificates {
         let mut settings = AwsIoTCertificates {
             device_cert: Vec::new(),
             private_key: Vec::new(),
-            host_url: [0; 128],
+            mqtt_endpoint: [0; 128],
             device_id: [0; 32],
         };
-
+        info!("Loading AwsIoTCertificates");
         let part = EspCustomNvsPartition::take(partition)?;
         let nvs = EspCustomNvs::new(part.clone(), "certificates", false)?;
 
@@ -123,10 +162,14 @@ impl AwsIoTCertificates {
         }
 
         let nvs = EspCustomNvs::new(part.clone(), "aws_settings", false)?;
-        nvs.get_str("host_url", &mut settings.host_url)?;
+        if let Err(err) = nvs.get_str("mqtt_endpoint", &mut settings.mqtt_endpoint) {
+            error!("failed to load config data mqtt_endpoint: {}", err);
+        }
 
         let nvs = EspCustomNvs::new(part, "device_data", false)?;
-        nvs.get_str("device_id", &mut settings.device_id)?;
+        if let Err(err) = nvs.get_str("device_id", &mut settings.device_id) {
+            error!("failed to load config data device_id: {}", err);
+        }
 
         Ok(settings)
     }

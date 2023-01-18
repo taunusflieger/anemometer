@@ -90,6 +90,7 @@ pub fn mqtt(
     ),
     InitError,
 > {
+    info!("Enter mqtt");
     let mut mqtt_parser = MessageParser::new();
 
     let x509_client_cert = esp_idf_svc::tls::X509::pem_until_nul(&aws_certificates.device_cert[..]);
@@ -98,8 +99,8 @@ pub fn mqtt(
 
     // need to remove tailing zeros otherwise CString will complain
     let url = core::str::from_utf8(
-        &(aws_certificates.host_url[0..aws_certificates
-            .host_url
+        &(aws_certificates.mqtt_endpoint[0..aws_certificates
+            .mqtt_endpoint
             .iter()
             .position(|&x| x == 0)
             .unwrap()]),
