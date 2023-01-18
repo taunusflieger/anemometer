@@ -244,7 +244,6 @@ fn perform_update(
         }
 
         bytes_read_total += data_read;
-        info!("bytes read: {}", bytes_read_total);
 
         if data_read > 0 {
             if let Err(err) = ota_update.write(&ota_write_data) {

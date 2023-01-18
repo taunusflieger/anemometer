@@ -49,7 +49,6 @@ impl Credentials {
         })
         .expect("Failed to create HttpConnection for AWS credential provider");
 
-        info!("EspHttpConnection created");
         let _resp = client.initiate_request(
             embedded_svc::http::Method::Get,
             AWS_CREDENTIAL_PROVIDER_ENPOINT,
@@ -78,8 +77,6 @@ impl Credentials {
             return Err(AwsError::AwsCredentialsError);
         }
 
-        info!("Content-length: {:?}", content_length);
-
         let mut access_keys: String = String::new();
 
         loop {
@@ -102,7 +99,6 @@ impl Credentials {
                 break;
             }
         }
-        info!("Credential Provider response = {}", access_keys);
 
         let deserialized: Root = match serde_json::from_str(&access_keys) {
             Ok(d) => d,
@@ -114,7 +110,6 @@ impl Credentials {
                 return Err(AwsError::AwsCredentialsError);
             }
         };
-        info!("Credentials: {:?}", deserialized.credentials);
 
         Ok(deserialized.credentials)
     }
@@ -137,8 +132,6 @@ pub fn signe_url(
     )
     .expect("Url has a valid scheme and host");
 
-    info!("bucket = {:?}", bucket);
-
     let credentials = rusty_s3::Credentials::new_with_token(
         aws_credentials.access_key_id,
         aws_credentials.secret_access_key,
@@ -148,6 +141,6 @@ pub fn signe_url(
     let presigned_url_duration = Duration::from_secs(AWS_TOKEN_LIFETIME);
     let action = bucket.get_object(Some(&credentials), fw_file_name);
     let signed_url = action.sign(presigned_url_duration);
-    info!("curl '{}'", signed_url);
+
     Ok(signed_url.to_string())
 }
