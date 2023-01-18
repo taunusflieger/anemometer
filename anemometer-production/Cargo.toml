@@ -43,12 +43,12 @@ log = { version = "0.4", features = [
 ] }
 embassy-futures = { version = "0.1" }
 embassy-sync = { version = "0.1", features = ["std"] }
+time = { version = "0.3", features = ["macros", "formatting", "parsing"] }
 embassy-time = { version = "0.1" }
 once_cell = { version = "1.17.0" }
-anyhow = "1.0"
+anyhow = { version = "1.0" }
 serde = { version = "1", default-features = false }
-postcard = "1.0.2"
-time = { version = "0.3", features = ["macros", "formatting", "parsing"] }
+postcard = { version = "1.0.2" }
 lazy_static = { version = "1.4.0" }
 fixed = { version = "1.21.0" }
 static_cell = { version = "1.0.0" }
@@ -62,9 +62,7 @@ partition_table = "partitions.csv"
 esp_idf_tools_install_dir = "global"
 esp_idf_version = "branch:release/v5.0"
 [build-dependencies]
-embuild = "0.30.4"
+embuild = { version = "0.30.4" }
 
 [patch.crates-io]
 #embedded-svc = { path = "../embedded-svc" }
-#esp-idf-sys = { git = "https://github.com/taunusflieger/esp-idf-sys" }
-#esp-idf-sys = { path = "../../esp-idf-sys" }
