@@ -222,6 +222,7 @@ pub async fn send_task<const L: usize>(mut mqtt: impl Client + Publish) {
                             windDir: "0,0",
                             windSpeed: avg_speed_string.as_str(),
                             windGust: wind_gust_string.as_str(),
+                            fwVer: env!("CARGO_PKG_VERSION"),
                         };
                         let mut buffer: String = String::new();
 

@@ -1,6 +1,6 @@
 [package]
-name = "esp32-anemometer"
-version = "0.1.31"
+name = "ESP32-Anemometer"
+version = "0.1.32"
 authors = ["Michael Zill <michael.zill@gmail.com>"]
 edition = "2021"
 resolver = "2"

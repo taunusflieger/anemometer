@@ -152,6 +152,7 @@ pub struct AWSShadowUpdate<'a> {
     pub windDir: &'a str,
     pub windSpeed: &'a str,
     pub windGust: &'a str,
+    pub fwVer: &'a str,
 }
 
 impl AWSShadowUpdate<'_> {

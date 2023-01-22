@@ -89,6 +89,7 @@ fn main() -> core::result::Result<(), InitError> {
     esp_idf_svc::timer::embassy_time::queue::link();
 
     esp_idf_svc::log::EspLogger::initialize_default();
+
     info!("ESP32-Anemometer");
     match core() {
         Core::Core0 => info!("running on core 0"),
