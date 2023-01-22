@@ -67,6 +67,8 @@ impl Credentials {
 
         {
             let aws_config = super::super::AWSCONFIG.lock().unwrap();
+            credential_provider_endpoint.push_str(&aws_config.credential_provider_endpoint);
+            /*
             // need to remove tailing zeros otherwise CString will complain
             credential_provider_endpoint.push_str(
                 core::str::from_utf8(
@@ -78,6 +80,7 @@ impl Credentials {
                 )
                 .unwrap(),
             );
+            */
         }
 
         let x509_client_cert =

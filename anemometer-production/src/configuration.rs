@@ -34,19 +34,21 @@ use esp_idf_svc::nvs::*;
 use esp_idf_sys::*;
 use log::*;
 
-#[derive(Debug, Copy, Clone)]
+const NVS_STRING_READ_BUFFER_SIZE: usize = 180;
+
+#[derive(Debug)]
 pub struct AwsIoTSettings {
-    pub things_prefix: [u8; 24],
-    pub shadow_update_postfix: [u8; 128],
-    pub shadow_delta_postfix: [u8; 128],
-    pub shadow_documents_postfix: [u8; 128],
-    pub device_id: [u8; 32],
-    pub topic_prefix: [u8; 128],
-    pub cmd_topic_postfix: [u8; 128],
-    pub region: [u8; 32],
-    pub s3_url: [u8; 128],
-    pub s3_fw_bucket: [u8; 32],
-    pub credential_provider_endpoint: [u8; 180],
+    pub things_prefix: String,
+    pub shadow_update_postfix: String,
+    pub shadow_delta_postfix: String,
+    pub shadow_documents_postfix: String,
+    pub device_id: String,
+    pub topic_prefix: String,
+    pub cmd_topic_postfix: String,
+    pub region: String,
+    pub s3_url: String,
+    pub s3_fw_bucket: String,
+    pub credential_provider_endpoint: String,
 }
 
 #[derive(Debug)]
@@ -59,38 +61,28 @@ pub struct AwsIoTCertificates {
 
 impl AwsIoTSettings {
     pub fn new(partition: &str) -> Result<Self, EspError> {
-        let mut settings = AwsIoTSettings {
-            things_prefix: [0; 24],
-            shadow_update_postfix: [0; 128],
-            shadow_delta_postfix: [0; 128],
-            shadow_documents_postfix: [0; 128],
-            device_id: [0; 32],
-            topic_prefix: [0; 128],
-            cmd_topic_postfix: [0; 128],
-            region: [0; 32],
-            s3_url: [0; 128],
-            s3_fw_bucket: [0; 32],
-            credential_provider_endpoint: [0; 180],
-        };
-
         let part = EspCustomNvsPartition::take(partition)?;
-
         let nvs = EspCustomNvs::new(part.clone(), "aws_settings", false)?;
-        nvs.get_str("things_prefix", &mut settings.things_prefix)?;
-        nvs.get_str("shadow_update", &mut settings.shadow_update_postfix)?;
-        nvs.get_str("shadow_delta", &mut settings.shadow_delta_postfix)?;
-        nvs.get_str("shadow_doc", &mut settings.shadow_documents_postfix)?;
-        nvs.get_str("topic_prefix", &mut settings.topic_prefix)?;
-        nvs.get_str("cmd_topic", &mut settings.cmd_topic_postfix)?;
-        nvs.get_str("region", &mut settings.region)?;
-        nvs.get_str("s3_url", &mut settings.s3_url)?;
-        nvs.get_str("s3_fw_bucket", &mut settings.s3_fw_bucket)?;
-        nvs.get_str("cred_prov_ep", &mut settings.credential_provider_endpoint)?;
 
-        let nvs = EspCustomNvs::new(part, "device_data", false)?;
-        nvs.get_str("device_id", &mut settings.device_id)?;
-
-        Ok(settings)
+        Ok(AwsIoTSettings {
+            things_prefix: get_string_from_nvs(&nvs, "things_prefix")?,
+            shadow_update_postfix: get_string_from_nvs(&nvs, "shadow_update")?,
+            shadow_delta_postfix: get_string_from_nvs(&nvs, "shadow_delta")?,
+            shadow_documents_postfix: get_string_from_nvs(&nvs, "shadow_doc")?,
+            topic_prefix: get_string_from_nvs(&nvs, "topic_prefix")?,
+            cmd_topic_postfix: get_string_from_nvs(&nvs, "cmd_topic")?,
+            region: get_string_from_nvs(&nvs, "region")?,
+            s3_url: get_string_from_nvs(&nvs, "s3_url")?,
+            s3_fw_bucket: get_string_from_nvs(&nvs, "s3_fw_bucket")?,
+            credential_provider_endpoint: get_string_from_nvs(&nvs, "cred_prov_ep")?,
+            device_id: {
+                let nvs = EspCustomNvs::new(part, "device_data", false)?;
+                match get_string_from_nvs(&nvs, "device_id") {
+                    Ok(s) => s,
+                    Err(err) => return Err(err),
+                }
+            },
+        })
     }
 }
 
@@ -146,4 +138,17 @@ impl AwsIoTCertificates {
 
         Ok(settings)
     }
+}
+
+fn get_string_from_nvs(nvs: &EspCustomNvs, key: &str) -> Result<String, EspError> {
+    let mut nvm_str_buffer: [u8; NVS_STRING_READ_BUFFER_SIZE] = [0; NVS_STRING_READ_BUFFER_SIZE];
+    nvs.get_str(key, &mut nvm_str_buffer)?;
+
+    // remove any tailing zeros
+    Ok(String::from(
+        core::str::from_utf8(
+            &(nvm_str_buffer[0..nvm_str_buffer.iter().position(|&x| x == 0).unwrap()]),
+        )
+        .unwrap(),
+    ))
 }

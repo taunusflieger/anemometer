@@ -39,7 +39,7 @@ use embedded_svc::wifi::{AuthMethod, ClientConfiguration, Configuration, Wifi as
 use esp_idf_hal::modem::WifiModemPeripheral;
 use esp_idf_hal::peripheral::Peripheral;
 use esp_idf_svc::eventloop::EspSystemEventLoop;
-use esp_idf_svc::mqtt::client::{EspMqttClient, MqttClientConfiguration};
+use esp_idf_svc::mqtt::client::{EspMqttClient, MqttClientConfiguration, MqttProtocolVersion};
 use esp_idf_svc::nvs::EspDefaultNvsPartition;
 use esp_idf_svc::wifi::{EspWifi, WifiEvent};
 use esp_idf_sys::EspError;
@@ -47,6 +47,8 @@ use log::*;
 
 const SSID: &str = env!("RUST_ESP32_ANEMOMETER_WIFI_SSID");
 const PASS: &str = env!("RUST_ESP32_ANEMOMETER_WIFI_PASS");
+// MQTT session timeout in sec
+const MQTT_SESSION_TIMEOUT: u64 = 600;
 
 pub fn wifi<'d>(
     modem: impl Peripheral<P = impl WifiModemPeripheral + 'd> + 'd,
@@ -90,7 +92,6 @@ pub fn mqtt(
     ),
     InitError,
 > {
-    info!("Enter mqtt");
     let mut mqtt_parser = MessageParser::new();
 
     let x509_client_cert = esp_idf_svc::tls::X509::pem_until_nul(&aws_certificates.device_cert[..]);
@@ -106,7 +107,6 @@ pub fn mqtt(
             .unwrap()]),
     )
     .unwrap();
-    info!("url = {url}");
 
     let device_id = core::str::from_utf8(
         &(aws_certificates.device_id[0..aws_certificates
@@ -116,7 +116,7 @@ pub fn mqtt(
             .unwrap()]),
     )
     .unwrap();
-    info!("client id = {device_id}");
+    info!("AWS IoT device id = {device_id}");
 
     let (mqtt_client, mqtt_conn) = EspMqttClient::new_with_converting_async_conn(
         url,
@@ -125,6 +125,9 @@ pub fn mqtt(
             client_certificate: Some(x509_client_cert),
             private_key: Some(x509_client_priv_key),
             crt_bundle_attach: Some(esp_idf_sys::esp_crt_bundle_attach),
+            disable_clean_session: true,
+            keep_alive_interval: Some(std::time::Duration::new(MQTT_SESSION_TIMEOUT, 0)),
+            protocol_version: Some(MqttProtocolVersion::V3_1_1),
             ..Default::default()
         },
         move |event| mqtt_parser.convert(event),

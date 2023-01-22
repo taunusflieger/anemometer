@@ -32,6 +32,7 @@
 #![allow(incomplete_features)]
 #![feature(generic_const_exprs)]
 use crate::configuration::AwsIoTSettings;
+use crate::global_settings::*;
 use crate::services::*;
 use crate::state::*;
 use crate::task::{httpd, mqtt, ota::*, publisher};
@@ -42,8 +43,9 @@ use edge_executor::*;
 use edge_executor::{Local, Task};
 use embedded_svc::utils::asyncify::Asyncify;
 use embedded_svc::wifi::Wifi as WifiTrait;
-use esp_idf_hal::task::executor::EspExecutor;
+use esp_idf_hal::reset::WakeupReason;
 use esp_idf_hal::task::thread::ThreadSpawnConfiguration;
+use esp_idf_hal::{cpu::*, task::executor::EspExecutor};
 use esp_idf_svc::eventloop::EspSystemEventLoop;
 use esp_idf_svc::netif::IpEvent;
 use esp_idf_svc::nvs::EspDefaultNvsPartition;
@@ -51,11 +53,10 @@ use esp_idf_svc::wifi::WifiEvent;
 // If using the `binstart` feature of `esp-idf-sys`, always keep this module imported
 use esp_idf_sys as _;
 use esp_idf_sys::esp_ota_mark_app_valid_cancel_rollback;
-use esp_idf_sys::{self as sys};
+use esp_idf_sys::{self as sys, esp, esp_wifi_set_ps, wifi_ps_type_t_WIFI_PS_MIN_MODEM};
+use log::*;
 use once_cell::sync::Lazy;
 use std::sync::Mutex;
-
-use log::*;
 
 mod configuration;
 mod data_processing;
@@ -68,10 +69,6 @@ mod task;
 mod utils;
 
 sys::esp_app_desc!();
-
-const TASK_MID_PRIORITY: u8 = 40;
-const TASK_LOW_PRIORITY: u8 = 30;
-const MQTT_MAX_TOPIC_LEN: usize = 64;
 
 static AWSCERTIFICATES: static_cell::StaticCell<AwsIoTCertificates> =
     static_cell::StaticCell::new();
@@ -93,6 +90,24 @@ fn main() -> core::result::Result<(), InitError> {
 
     esp_idf_svc::log::EspLogger::initialize_default();
     info!("ESP32-Anemometer");
+    match core() {
+        Core::Core0 => info!("running on core 0"),
+        Core::Core1 => info!("running on core 1"),
+    }
+    let wakeup_reason = WakeupReason::get();
+    info!("Wakeup reason: {:?}", wakeup_reason);
+
+    let pm_config = esp_idf_sys::esp_pm_config_esp32s3_t {
+        max_freq_mhz: MAX_CPU_FREQ,
+        min_freq_mhz: MIN_CPU_FREQ,
+        light_sleep_enable: LIGHT_SLEEP_MODE_ENABLED,
+    };
+
+    if let Err(err) =
+        esp!(unsafe { esp_idf_sys::esp_pm_configure(&pm_config as *const _ as *const _) })
+    {
+        panic!("failed to set esp_pm_configure {err}");
+    }
 
     let peripherals = peripherals::SystemPeripherals::take();
     let anemometer_peripherals = peripherals.pulse_counter;
@@ -101,6 +116,7 @@ fn main() -> core::result::Result<(), InitError> {
 
     // Initialize data capture from anemometer
     let mut anemometer = anemometer::AnemometerDriver::new(anemometer_peripherals.pulse).unwrap();
+
     let _anemometer_timer = anemometer.set_measurement_timer().unwrap();
 
     let aws_iot_certificates: &'static AwsIoTCertificates =
@@ -118,25 +134,23 @@ fn main() -> core::result::Result<(), InitError> {
         Some(nvs_default_partition),
     )?;
 
+    esp!(unsafe { esp_wifi_set_ps(wifi_ps_type_t_WIFI_PS_MIN_MODEM) })?;
+
     let _sntp = utils::datetime::initialize();
 
     ThreadSpawnConfiguration {
-        name: Some(b"mid-prio-executor\0"),
-        priority: TASK_MID_PRIORITY,
+        name: Some(b"high-prio-executor\0"),
+        priority: TASK_HIGH_PRIORITY,
         ..Default::default()
     }
     .set()?;
 
-    let mid_prio_execution = schedule::<8, _>(40000, move || {
+    let _high_prio_execution = schedule::<8, _>(40000, move || {
         let executor = EspExecutor::new();
         let mut tasks = heapless::Vec::new();
 
-        executor.spawn_local_collect(process_wifi_state_change(wifi, wifi_notif), &mut tasks)?;
-
-        executor.spawn_local_collect(publisher::wind_speed_task(), &mut tasks)?;
-
         executor.spawn_local_collect(ota_task(aws_iot_certificates), &mut tasks)?;
-        executor.spawn_local_collect(httpd::http_server_task(), &mut tasks)?;
+        executor.spawn_local_collect(process_wifi_state_change(wifi, wifi_notif), &mut tasks)?;
 
         executor.spawn_local_collect(
             process_netif_state_change(netif_notifier(sysloop.clone()).unwrap()),
@@ -147,7 +161,7 @@ fn main() -> core::result::Result<(), InitError> {
     });
 
     ThreadSpawnConfiguration {
-        name: Some(b"mqtt-executor\0"),
+        name: Some(b"mid-prio-executor\0"),
         priority: TASK_MID_PRIORITY,
         ..Default::default()
     }
@@ -155,12 +169,15 @@ fn main() -> core::result::Result<(), InitError> {
 
     std::thread::sleep(core::time::Duration::from_millis(8000));
 
-    let (mqtt_client, mqtt_conn) = services::mqtt(aws_iot_certificates)?;
-
-    let mqtt_execution = schedule::<8, _>(8000, move || {
+    let _mid_prio_execution = schedule::<8, _>(8000, move || {
         let executor = EspExecutor::new();
         let mut tasks = heapless::Vec::new();
+        let (mqtt_client, mqtt_conn) = services::mqtt(aws_iot_certificates).unwrap();
 
+        executor.spawn_local_collect(
+            mqtt::send_task::<MQTT_MAX_TOPIC_LEN>(mqtt_client),
+            &mut tasks,
+        )?;
         executor.spawn_local_collect(mqtt::receive_task(mqtt_conn), &mut tasks)?;
         Ok((executor, tasks))
     });
@@ -172,14 +189,11 @@ fn main() -> core::result::Result<(), InitError> {
     }
     .set()?;
 
-    let low_prio_execution = schedule::<8, _>(8000, move || {
+    let low_prio_execution = schedule::<8, _>(32000, move || {
         let executor = EspExecutor::new();
         let mut tasks = heapless::Vec::new();
-
-        executor.spawn_local_collect(
-            mqtt::send_task::<MQTT_MAX_TOPIC_LEN>(mqtt_client),
-            &mut tasks,
-        )?;
+        executor.spawn_local_collect(publisher::wind_speed_task(), &mut tasks)?;
+        //executor.spawn_local_collect(httpd::http_server_task(), &mut tasks)?;
 
         Ok((executor, tasks))
     });
@@ -193,10 +207,6 @@ fn main() -> core::result::Result<(), InitError> {
         info!("System start time: {time}");
     }
 
-    // This is required to allow the low prio thread to start
-    std::thread::sleep(core::time::Duration::from_millis(2000));
-    mid_prio_execution.join().unwrap();
-    mqtt_execution.join().unwrap();
     low_prio_execution.join().unwrap();
 
     unreachable!();

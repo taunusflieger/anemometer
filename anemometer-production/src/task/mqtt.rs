@@ -46,6 +46,7 @@ static MQTT_CONNECT_SIGNAL: Signal<CriticalSectionRawMutex, bool> = Signal::new(
 
 pub async fn receive_task(mut connection: impl Connection<Message = Option<MqttCommand>>) {
     let mut app_event = APPLICATION_EVENT_CHANNEL.subscriber().unwrap();
+    info!("Receive Task Started");
 
     loop {
         let (message, app_state_change) =
@@ -113,63 +114,20 @@ pub async fn send_task<const L: usize>(mut mqtt: impl Client + Publish) {
 
     {
         let aws_config = super::super::AWSCONFIG.lock().unwrap();
-        // need to remove tailing zeros otherwise CString will complain
 
-        let topic_prefix = core::str::from_utf8(
-            &(aws_config.topic_prefix[0..aws_config
-                .topic_prefix
-                .iter()
-                .position(|&x| x == 0)
-                .unwrap()]),
-        )
-        .unwrap();
-
-        let topic_postfix = core::str::from_utf8(
-            &(aws_config.cmd_topic_postfix[0..aws_config
-                .cmd_topic_postfix
-                .iter()
-                .position(|&x| x == 0)
-                .unwrap()]),
-        )
-        .unwrap();
-
-        let device_id_str = core::str::from_utf8(
-            &(aws_config.device_id[0..aws_config.device_id.iter().position(|&x| x == 0).unwrap()]),
-        )
-        .unwrap();
-
-        device_id.push_str(device_id_str);
+        device_id.push_str(&aws_config.device_id);
 
         // build topic string specific for device id
-        cmd_topic.push_str(topic_prefix);
+        cmd_topic.push_str(&aws_config.topic_prefix);
         cmd_topic.push('/');
-        cmd_topic.push_str(device_id_str);
-        cmd_topic.push_str(topic_postfix);
+        cmd_topic.push_str(&aws_config.device_id);
+        cmd_topic.push_str(&aws_config.cmd_topic_postfix);
         info!("subscribing to {cmd_topic}");
 
-        // need to remove tailing zeros otherwise CString will complain
-        let shadow_update_postfix_str = core::str::from_utf8(
-            &(aws_config.shadow_update_postfix[0..aws_config
-                .shadow_update_postfix
-                .iter()
-                .position(|&x| x == 0)
-                .unwrap()]),
-        )
-        .unwrap();
-
-        let things_prefix_str = core::str::from_utf8(
-            &(aws_config.things_prefix[0..aws_config
-                .things_prefix
-                .iter()
-                .position(|&x| x == 0)
-                .unwrap()]),
-        )
-        .unwrap();
-
-        shadow_update_topic.push_str(things_prefix_str);
+        shadow_update_topic.push_str(&aws_config.things_prefix);
         shadow_update_topic.push('/');
-        shadow_update_topic.push_str(device_id_str);
-        shadow_update_topic.push_str(shadow_update_postfix_str);
+        shadow_update_topic.push_str(&aws_config.device_id);
+        shadow_update_topic.push_str(&aws_config.shadow_update_postfix);
         info!("posting to {shadow_update_topic}");
     }
 

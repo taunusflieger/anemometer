@@ -54,31 +54,10 @@ pub async fn ota_task(aws_certificates: &'static AwsIoTCertificates) {
 
     {
         let aws_config = super::super::AWSCONFIG.lock().unwrap();
-        // need to remove tailing zeros otherwise CString will complain
-        s3_url.push_str(
-            core::str::from_utf8(
-                &(aws_config.s3_url[0..aws_config.s3_url.iter().position(|&x| x == 0).unwrap()]),
-            )
-            .unwrap(),
-        );
 
-        s3_fw_bucket.push_str(
-            core::str::from_utf8(
-                &(aws_config.s3_fw_bucket[0..aws_config
-                    .s3_fw_bucket
-                    .iter()
-                    .position(|&x| x == 0)
-                    .unwrap()]),
-            )
-            .unwrap(),
-        );
-
-        aws_region.push_str(
-            core::str::from_utf8(
-                &(aws_config.region[0..aws_config.region.iter().position(|&x| x == 0).unwrap()]),
-            )
-            .unwrap(),
-        );
+        s3_url.push_str(&aws_config.s3_url);
+        s3_fw_bucket.push_str(&aws_config.s3_fw_bucket);
+        aws_region.push_str(&aws_config.region);
     }
 
     loop {

@@ -33,3 +33,15 @@
 pub const DATA_REPORTING_INTERVAL: u64 = 120;
 // Interval for taking measurments from the anemometer [ms]
 pub const MEASUREMENT_INTERVAL: u64 = 500;
+// light sleep mode max cpu frequency
+pub const MAX_CPU_FREQ: i32 = 160;
+// light sleep mode min cpu frequency
+pub const MIN_CPU_FREQ: i32 = 40;
+// light sleep mode enabled flag
+pub const LIGHT_SLEEP_MODE_ENABLED: bool = true;
+// All user task will run on core 1
+// core 0 will be used by wifi and network stack
+pub const TASK_HIGH_PRIORITY: u8 = 30;
+pub const TASK_MID_PRIORITY: u8 = 27;
+pub const TASK_LOW_PRIORITY: u8 = 25;
+pub const MQTT_MAX_TOPIC_LEN: usize = 64;
