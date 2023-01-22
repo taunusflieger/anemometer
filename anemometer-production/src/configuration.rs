@@ -29,7 +29,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
+use crate::utils::nvs_ext::*;
 use esp_idf_svc::nvs::*;
 use esp_idf_sys::*;
 use log::*;
@@ -62,6 +62,41 @@ pub struct AwsIoTCertificates {
 impl AwsIoTSettings {
     pub fn new(partition: &str) -> Result<Self, EspError> {
         let part = EspCustomNvsPartition::take(partition)?;
+
+        let nvs = EspCustomNvs::new(part.clone(), "device_data", false)?;
+
+        let mut v: u8 = 0;
+        nvs.get_u8("test_u8", &mut v)?;
+        info!("v = {}", v);
+
+        let mut v: i8 = 0;
+        nvs.get_i8("test_i8", &mut v)?;
+        info!("v = {}", v);
+
+        let mut v: u16 = 0;
+        nvs.get_u16("test_u16", &mut v)?;
+        info!("v = {}", v);
+
+        let mut v: i16 = 0;
+        nvs.get_i16("test_i16", &mut v)?;
+        info!("v = {}", v);
+
+        let mut v: u32 = 0;
+        nvs.get_u32("test_u32", &mut v)?;
+        info!("v = {}", v);
+
+        let mut v: i32 = 0;
+        nvs.get_i32("test_i32", &mut v)?;
+        info!("v = {}", v);
+
+        let mut v: u64 = 0;
+        nvs.get_u64("test_u64", &mut v)?;
+        info!("v = {}", v);
+
+        let mut v: i64 = 0;
+        nvs.get_i64("test_i64", &mut v)?;
+        info!("v = {}", v);
+
         let nvs = EspCustomNvs::new(part.clone(), "aws_settings", false)?;
 
         Ok(AwsIoTSettings {

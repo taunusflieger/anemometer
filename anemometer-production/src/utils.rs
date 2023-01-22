@@ -30,6 +30,8 @@
  * limitations under the License.
  */
 pub mod aws_credential_service;
+pub mod cstr;
 pub mod datetime;
 pub mod error;
 pub mod errors;
+pub mod nvs_ext;

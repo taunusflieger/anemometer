@@ -740,8 +740,7 @@ dependencies = [
 [[package]]
 name = "esp-idf-hal"
 version = "0.40.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c4354dcc4d157de675c55eb2e98f4985a526ea56fff316aa0939a63636c4952b"
+source = "git+https://github.com/esp-rs/esp-idf-hal#967f96a6a1b0cfe1defce5c8b2f91ef7ff12ecaf"
 dependencies = [
  "anyhow",
  "critical-section",
@@ -752,6 +751,7 @@ dependencies = [
  "embedded-hal 1.0.0-alpha.9 (registry+https://github.com/rust-lang/crates.io-index)",
  "embedded-hal-nb",
  "embuild 0.31.0",
+ "enumset",
  "esp-idf-sys",
  "heapless",
  "nb 1.0.0",
@@ -760,7 +760,7 @@ dependencies = [
 [[package]]
 name = "esp-idf-svc"
 version = "0.45.0"
-source = "git+https://github.com/taunusflieger/esp-idf-svc?branch=idf5_fixes#864a54f5dee45775f609de5ceaf4bc2ae0ecba9e"
+source = "git+https://github.com/esp-rs/esp-idf-svc#3f5e0883ddd586c17fa2163d6e6173d117c55c9a"
 dependencies = [
  "anyhow",
  "embassy-sync",
@@ -778,8 +778,7 @@ dependencies = [
 [[package]]
 name = "esp-idf-sys"
 version = "0.32.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7b3458faf5c04761cb9a122ba30714afda5e88848e2f99c6e6c05c77ecf626d8"
+source = "git+https://github.com/esp-rs/esp-idf-sys#520a6fbfecd312badf9cbd4be651318544539e0b"
 dependencies = [
  "anyhow",
  "bindgen",

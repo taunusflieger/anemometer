@@ -36,6 +36,7 @@ use crate::global_settings::*;
 use crate::services::*;
 use crate::state::*;
 use crate::task::{httpd, mqtt, ota::*, publisher};
+use crate::utils::nvs_ext::*;
 use crate::utils::{datetime, errors::*};
 use channel_bridge::{asynch::pubsub, asynch::*};
 use configuration::AwsIoTCertificates;
@@ -49,6 +50,7 @@ use esp_idf_hal::{cpu::*, task::executor::EspExecutor};
 use esp_idf_svc::eventloop::EspSystemEventLoop;
 use esp_idf_svc::netif::IpEvent;
 use esp_idf_svc::nvs::EspDefaultNvsPartition;
+use esp_idf_svc::nvs::*;
 use esp_idf_svc::wifi::WifiEvent;
 // If using the `binstart` feature of `esp-idf-sys`, always keep this module imported
 use esp_idf_sys as _;
@@ -68,7 +70,7 @@ mod state;
 mod task;
 mod utils;
 
-sys::esp_app_desc!();
+//sys::esp_app_desc!();
 
 static AWSCERTIFICATES: static_cell::StaticCell<AwsIoTCertificates> =
     static_cell::StaticCell::new();
