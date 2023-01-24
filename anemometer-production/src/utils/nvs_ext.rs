@@ -37,6 +37,7 @@ use esp_idf_sys::*;
 pub trait EspNvsExtention {
     fn len_str(&self, name: &str) -> Result<Option<usize>, EspError>;
     fn get_str<'a>(&self, name: &str, buf: &'a mut [u8]) -> Result<Option<&'a [u8]>, EspError>;
+    fn set_str(&mut self, name: &str, val: &str) -> Result<bool, EspError>;
     fn get_u8<'a>(&self, name: &str, out_val: &'a mut u8) -> Result<Option<&'a u8>, EspError>;
     fn set_u8(&self, name: &str, val: u8) -> Result<bool, EspError>;
     fn get_i8<'a>(&self, name: &str, out_val: &'a mut i8) -> Result<Option<&'a i8>, EspError>;
@@ -102,6 +103,20 @@ impl EspNvsExtention for EspCustomNvs {
                 Ok(Some(buf))
             }
         }
+    }
+
+    fn set_str(&mut self, name: &str, val: &str) -> Result<bool, EspError> {
+        let c_key = CString::new(name).unwrap();
+        let c_val = CString::new(val).unwrap();
+
+        // start by just clearing this key
+        unsafe { nvs_erase_key(self.handle(), c_key.as_ptr()) };
+
+        esp!(unsafe { nvs_set_str(self.handle(), c_key.as_ptr(), c_val.as_ptr(),) })?;
+
+        esp!(unsafe { nvs_commit(self.handle()) })?;
+
+        Ok(true)
     }
 
     fn get_u8<'a>(&self, name: &str, out_val: &'a mut u8) -> Result<Option<&'a u8>, EspError> {
