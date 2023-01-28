@@ -68,6 +68,8 @@ The 3D printed anemometer:
 
 ![Adafruit Feather ESP32-S3 TFT](assets/IMG_2120.jpeg) ![Adafruit Feather ESP32-S3 TFT](assets/IMG_2121.jpeg)
 
+## Hardware BOM
+- [SS41F](https://www.mouser.com/catalog/specsheets/hwsc-s-a0001295895-1.pdf). Hall- effect sensor to measure the rotation speed of the cups rotor
 
 ## License
 
