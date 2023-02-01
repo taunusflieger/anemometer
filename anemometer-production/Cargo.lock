@@ -4,7 +4,7 @@ version = 3
 
 [[package]]
 name = "ESP32-Anemometer"
-version = "0.1.32"
+version = "0.1.33"
 dependencies = [
  "anyhow",
  "channel-bridge",
@@ -15,7 +15,7 @@ dependencies = [
  "embassy-time",
  "embedded-hal 1.0.0-alpha.9 (git+https://github.com/rust-embedded/embedded-hal?tag=v1.0.0-alpha.9)",
  "embedded-svc",
- "embuild 0.30.5",
+ "embuild",
  "esp-idf-hal",
  "esp-idf-svc",
  "esp-idf-sys",
@@ -670,20 +670,6 @@ dependencies = [
 
 [[package]]
 name = "embuild"
-version = "0.30.5"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "880ed2a045c218d4c5d57e757991385642b94082e7b216266b127c0b6cadc5ba"
-dependencies = [
- "anyhow",
- "bitflags",
- "filetime",
- "log",
- "shlex",
- "thiserror",
-]
-
-[[package]]
-name = "embuild"
 version = "0.31.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "65388407a519276cd9aa94291380649d4cedbe8cf566d40f436f7a1ea9b5f8fe"
@@ -750,7 +736,7 @@ dependencies = [
  "embedded-hal 0.2.7",
  "embedded-hal 1.0.0-alpha.9 (registry+https://github.com/rust-lang/crates.io-index)",
  "embedded-hal-nb",
- "embuild 0.31.0",
+ "embuild",
  "enumset",
  "esp-idf-sys",
  "heapless",
@@ -766,7 +752,7 @@ dependencies = [
  "embassy-sync",
  "embassy-time",
  "embedded-svc",
- "embuild 0.31.0",
+ "embuild",
  "enumset",
  "esp-idf-hal",
  "esp-idf-sys",
@@ -785,7 +771,7 @@ dependencies = [
  "build-time",
  "cargo_metadata",
  "const_format",
- "embuild 0.31.0",
+ "embuild",
  "envy",
  "libc",
  "regex",

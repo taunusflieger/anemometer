@@ -1,13 +1,15 @@
 [package]
 name = "ESP32-Anemometer"
-version = "0.1.32"
+version = "0.1.33"
 authors = ["Michael Zill <michael.zill@gmail.com>"]
 edition = "2021"
 resolver = "2"
 
 [profile.release]
-opt-level = "s"
-
+opt-level = "z"   # Optimize for size.
+lto = true        # link stage code size optimization
+strip = true      # Automatically strip symbols from the binary.
+codegen-units = 1 # enable further code gen optimization - build is slower
 [profile.dev]
 debug = true    # Symbols are nice and they don't increase the size on Flash
 opt-level = "z"
@@ -61,10 +63,9 @@ rusty-s3 = { version = "0.4.0" }
 partition_table = "partitions.csv"
 
 [package.metadata.esp-idf-sys]
-esp_idf_tools_install_dir = "global"
 esp_idf_version = "branch:release/v5.0"
 [build-dependencies]
-embuild = { version = "0.30.4" }
+embuild = { version = "0.31" }
 
 [patch.crates-io]
 esp-idf-hal = { git = "https://github.com/esp-rs/esp-idf-hal" }
