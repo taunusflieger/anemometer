@@ -1,0 +1,42 @@
+{
+    "version": "2.0.0",
+    "options": {
+        "env": {
+            "DEFMT_LOG": "info" //!MODIFY: Remove or use any of the supported DEFMT_LOG options.
+        }
+    },
+    "tasks": [
+        {
+            "command": "cargo",
+            "args": [
+                "build"
+            ],
+            "options": {
+                "env": {
+                    "DEFMT_LOG": "info",
+                }
+            },
+            "problemMatcher": [
+                "$rustc"
+            ],
+            "group": "build",
+            "label": "build binary"
+        },
+        {
+            "command": "cargo",
+            "args": [
+                "run",
+            ],
+            "options": {
+                "env": {
+                    "DEFMT_LOG": "info",
+                }
+            },
+            "problemMatcher": [
+                "$rustc"
+            ],
+            "group": "build",
+            "label": "run binary"
+        }
+    ]
+}
